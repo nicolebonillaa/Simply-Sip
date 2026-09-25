@@ -1,4 +1,22 @@
 {
-  "name": "SimplySip",
-  "displayName": "SimplySip"
+  "expo": {
+    "name": "SimplySip",
+    "slug": "simplysip",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "enableSceneSupport": true
+          }
+        }
+      ]
+    ],
+    "android": {
+      "package": "com.anonymous.simplysip"
+    },
+    "ios": {
+      "bundleIdentifier": "com.anonymous.simplysip"
+    }
+  }
 }

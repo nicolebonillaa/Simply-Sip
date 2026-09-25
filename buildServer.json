@@ -1,0 +1,19 @@
+{
+  "name": "sweetpad",
+  "version": "0.2.16",
+  "bspVersion": "2.2.0",
+  "languages": [
+    "swift",
+    "objective-c",
+    "objective-cpp",
+    "c",
+    "cpp"
+  ],
+  "argv": [
+    "/opt/homebrew/bin/sweetpad",
+    "bsp",
+    "serve",
+    "--config",
+    "/Users/nicoleuribe/.local/state/sweetpad/projects/815c37ed1ebe/bsp.json"
+  ]
+}
