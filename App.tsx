@@ -4,8 +4,8 @@
  * @format
  */
 
-import React from 'react';
-import RootNavigator from './src/navigation/RootNavigator';
+import React from "react";
+import RootNavigator from "./src/navigation/RootNavigator";
 
 function App(): React.JSX.Element {
   return <RootNavigator />;
