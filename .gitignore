@@ -73,3 +73,10 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+# Spring Boot / Java
+backend/target/
+backend/src/main/resources/application-local.properties
+*.class
+*.jar
+!backend/.mvn/wrapper/maven-wrapper.jar
