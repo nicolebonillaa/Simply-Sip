@@ -44,9 +44,9 @@ export interface User {
 }
 
 export interface UpdateUserRequest {
-  name: string;
-  email: string;
-  password: string;
+  name?: string;
+  email?: string;
+  password?: string;
 }
 
 export interface Favorite {

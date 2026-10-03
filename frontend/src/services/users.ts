@@ -21,7 +21,6 @@ export const getUser = async (userId: number, token: string): Promise<User> => {
   return response.data;
 };
 
-// PUT Request not working 403 forbidden error
 export const updateUser = async (
   userId: number,
   userData: UpdateUserRequest,
