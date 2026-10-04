@@ -4,8 +4,25 @@
     "slug": "simplysip",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/simply sip logo/simply-sip-icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Simply Sip to use your location to show nearby drink spots."
+        }
+      ],
+      "react-native-maps",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/simply sip logo/simply-sip-splash-icon.png",
+          "imageWidth": 200,
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.simplysip"
@@ -13,10 +30,8 @@
     "android": {
       "package": "com.anonymous.simplysip",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#FFFFFF",
+        "foregroundImage": "./assets/simply sip logo/simply-sip-icon-android.png"
       },
       "predictiveBackGestureEnabled": false
     },
