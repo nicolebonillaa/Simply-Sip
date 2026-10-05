@@ -11,11 +11,6 @@ export default function RootNavigator() {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainTabs" component={MainTabs} />
-        <RootStack.Screen
-          name="Filters"
-          component={Filters}
-          options={{ presentation: "modal", headerShown: false }}
-        />
       </RootStack.Navigator>
     </NavigationContainer>
   );
