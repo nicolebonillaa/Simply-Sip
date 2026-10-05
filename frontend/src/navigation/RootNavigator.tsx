@@ -2,7 +2,7 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabs from "./MainTabs";
-import Filters from "../screens/Filters";
+import Filters from "../screens/FilterModal";
 
 const RootStack = createNativeStackNavigator();
 

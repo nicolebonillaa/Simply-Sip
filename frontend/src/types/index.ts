@@ -69,3 +69,13 @@ export interface RegisterRequest {
   email: string;
   password: string;
 }
+
+export interface Filters {
+  vegan: boolean;
+  vegetarian: boolean;
+  dairyFree: boolean;
+  glutenFree: boolean;
+  maxCalories: number | null;
+  maxSugar: number | null;
+  allergens: string[];
+}
