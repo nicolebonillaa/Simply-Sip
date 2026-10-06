@@ -1,12 +1,16 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.CreateDrinkRequest;
+import com.simplysip.dto.CreateNutritionFactsRequest;
 import com.simplysip.model.Drink;
+import com.simplysip.model.NutritionFacts;
 import com.simplysip.service.DrinkService;
 import jakarta.validation.Valid;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 
@@ -42,14 +46,29 @@ public class DrinkController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    /**
+     * Creates a drink at an existing location. Returns 404 when locationId is unknown.
+     */
     @PostMapping
-    public ResponseEntity<?> create(@Valid @RequestBody Drink drink) {
-        try {
-            Drink created = drinkService.create(drink);
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-        }
+    public ResponseEntity<Drink> create(@Valid @RequestBody CreateDrinkRequest request) {
+        Drink created = drinkService.create(request.getName(), request.getCategory(), request.getLocationId());
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(created.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
+    }
+
+    /**
+     * Adds the single nutrition-facts row for a drink. Returns 409 if one already exists.
+     */
+    @PostMapping("/{drinkId}/nutrition-facts")
+    public ResponseEntity<NutritionFacts> createNutritionFacts(
+            @PathVariable Long drinkId,
+            @Valid @RequestBody CreateNutritionFactsRequest request) {
+        NutritionFacts created = drinkService.addNutritionFacts(drinkId, request);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest().build().toUri();
+        return ResponseEntity.created(location).body(created);
     }
 
     @PutMapping("/{id}")

@@ -1,5 +1,6 @@
 package com.simplysip.service;
 
+import com.simplysip.dto.CreateLocationRequest;
 import com.simplysip.model.Location;
 import com.simplysip.repository.LocationRepository;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,12 @@ public class LocationService {
         return locationRepository.findById(id);
     }
 
-    public Location create(Location location) {
+    public Location create(CreateLocationRequest request) {
+        Location location = new Location();
+        location.setName(request.getName());
+        location.setAddress(request.getAddress());
+        location.setLatitude(request.getLatitude());
+        location.setLongitude(request.getLongitude());
         return locationRepository.save(location);
     }
 

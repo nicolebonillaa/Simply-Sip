@@ -1,10 +1,16 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.CreateUserRequest;
+import com.simplysip.dto.UserResponse;
 import com.simplysip.model.User;
 import com.simplysip.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
 
 @RestController
 @RequestMapping("/api/users")
@@ -14,6 +20,19 @@ public class UserController {
 
     public UserController(UserService userService) {
         this.userService = userService;
+    }
+
+    /**
+     * Creates a user from name, email, and password. The password is hashed before it is stored.
+     */
+    @PostMapping
+    public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
+        User saved = userService.create(request.getName(), request.getEmail(), request.getPassword());
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(saved.getId())
+                .toUri();
+        return ResponseEntity.created(location).body(new UserResponse(saved));
     }
 
     @GetMapping("/me")

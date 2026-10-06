@@ -33,9 +33,21 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
-    public User create(User user) {
-        user.setEmail(user.getEmail().trim().toLowerCase());
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+    /**
+     * Creates a user with a BCrypt password hash. Rejects a blank or already-used email.
+     */
+    public User create(String name, String email, String rawPassword) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        String normalized = email.trim().toLowerCase();
+        if (userRepository.findByEmail(normalized).isPresent()) {
+            throw new IllegalArgumentException("Email already exists");
+        }
+        User user = new User();
+        user.setName(name);
+        user.setEmail(normalized);
+        user.setPassword(passwordEncoder.encode(rawPassword));
         return userRepository.save(user);
     }
 
