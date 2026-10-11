@@ -10,13 +10,14 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import MapView from "react-native-maps";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DrinkMarker from "../components/DrinkMarker";
 import {
   CSUN_REGION,
   getNearbySpots,
   MOCK_SPOTS,
+  MapSpot,
 } from "../data/mapData";
 
 type PermissionState = "checking" | "granted" | "denied";
@@ -46,7 +47,13 @@ export default function MapScreen() {
   const [canAskAgain, setCanAskAgain] = useState(true);
   const [region, setRegion] = useState(CSUN_REGION);
 
-  const nearbySpots = getNearbySpots(MOCK_SPOTS);
+  const route = useRoute<any>();
+
+  const passedSpots = route.params?.spots;
+
+  const nearbySpots: MapSpot[] = Array.isArray(passedSpots)
+    ? passedSpots
+    : getNearbySpots(MOCK_SPOTS);
 
   const requestLocation = async () => {
     setPermission("checking");
