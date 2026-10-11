@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   FlatList,
   Image,
@@ -9,8 +9,9 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
+
 import MapPreview from "../components/MapPreview";
 import FilterModal from "./FilterModal";
 import { getNearbySpots, MOCK_SPOTS } from "../data/mapData";
@@ -25,35 +26,60 @@ import {
 
 export default function SearchResults() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { theme } = useTheme();
+
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(route.params?.query ?? "");
   const [openNow, setOpenNow] = useState(false);
   const [filterVisible, setFilterVisible] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
 
-  // `filters` is what's picked in the sheet. `appliedFilters` is what the
-  // results actually use. They only sync when the magnifier is pressed.
-  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<Filters>(
+    route.params?.filters ?? DEFAULT_FILTERS,
+  );
+
+  const [appliedFilters, setAppliedFilters] = useState<Filters>(
+    route.params?.filters ?? DEFAULT_FILTERS,
+  );
+
+  // Updates the screen when HomePage sends a new search.
+  useEffect(() => {
+    if (typeof route.params?.query === "string") {
+      setQuery(route.params.query);
+    }
+
+    if (route.params?.filters) {
+      setFilters(route.params.filters);
+      setAppliedFilters(route.params.filters);
+    }
+  }, [route.params]);
 
   const hasPending = useMemo(
     () => JSON.stringify(filters) !== JSON.stringify(appliedFilters),
     [filters, appliedFilters],
   );
-  const activeCount = countActiveFilters(filters);
-  const appliedTags = useMemo(() => describeFilters(appliedFilters), [appliedFilters]);
 
-  const runSearch = () => setAppliedFilters(filters);
+  const activeCount = countActiveFilters(filters);
+
+  const appliedTags = useMemo(
+    () => describeFilters(appliedFilters),
+    [appliedFilters],
+  );
+
+  const runSearch = () => {
+    setAppliedFilters(filters);
+  };
 
   const nearbySpots = useMemo(() => {
     let spots = getNearbySpots(MOCK_SPOTS);
 
-    // Typing searches right away, no filters needed.
     if (query.trim()) {
+      const searchText = query.toLowerCase();
+
       spots = spots.filter((spot) =>
-        spot.name.toLowerCase().includes(query.toLowerCase()),
+        spot.name.toLowerCase().includes(searchText),
       );
     }
 
@@ -82,7 +108,6 @@ export default function SearchResults() {
     <View>
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
-          {/* The magnifier is the search button. It fills in when filters are waiting. */}
           <Pressable
             style={[styles.searchButton, hasPending && styles.searchButtonHot]}
             onPress={runSearch}
@@ -148,10 +173,13 @@ export default function SearchResults() {
         </View>
       )}
 
-      {/* Map is unchanged. It still gets the (now filtered) spots. */}
       <MapPreview
         spots={nearbySpots}
-        onPress={() => navigation.navigate("MapScreen")}
+        onPress={() =>
+          navigation.navigate("MapScreen", {
+            spots: nearbySpots,
+          })
+        }
       />
 
       <View style={styles.headingRow}>
@@ -255,7 +283,6 @@ export default function SearchResults() {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    // No backgroundColor: App.tsx owns the screen background.
     container: {
       flex: 1,
     },

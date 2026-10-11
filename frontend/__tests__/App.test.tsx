@@ -28,7 +28,53 @@ jest.mock("react-native-maps", () => {
     Callout,
   };
 });
+jest.mock("../assets/mocha icons/mocha-home-filled.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
 
+jest.mock("../assets/mocha icons/mocha-home-outline.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
+
+jest.mock("../assets/mocha icons/mocha-favorites-filled.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
+
+jest.mock("../assets/mocha icons/mocha-favorites-outline.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
+
+jest.mock("../assets/mocha icons/mocha-profile-filled.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
+
+jest.mock("../assets/mocha icons/mocha-profile-outline.svg", () => {
+  const MockSvg = () => null;
+  return {
+    __esModule: true,
+    default: MockSvg,
+  };
+});
 import App from "../App";
 
 test("renders correctly", async () => {
