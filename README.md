@@ -4,9 +4,19 @@ A mobile app for CSUN students to discover and filter drinks near campus based o
 
 ## Tech Stack
 
-- Frontend: React Native
+- Frontend: React Native, Expo
 - Backend: Java (Spring Boot), MySQL
 - API: REST with JWT authentication
+
+## Team
+
+- Nicole Uribe — Team Lead / Scrum Master, Frontend Lead
+- Angelo Rodriguez — Database Administrator, Backend Lead
+- Cosette Espino — Graphic Designer, Backend
+- Amin Zoghlami — Frontend, Backend
+- Faith Hill — Frontend
+- Danielle Pacheco — Backend
+
 
 ## Backend
 
