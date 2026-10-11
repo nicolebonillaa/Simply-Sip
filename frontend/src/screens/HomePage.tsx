@@ -1,35 +1,50 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Button } from "react-native";
+import { Button, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
 import FilterModal from "./FilterModal";
-import type { Filters as FilterOptions } from "../types";
 
 export default function HomePage() {
-  const [filtersVisible, setFiltersVisible] = useState(false);
-
-  const handleApplyFilters = (filters: FilterOptions) => {
-    console.log(filters);
-    setFiltersVisible(false);
-  };
+  const navigation = useNavigation<any>();
+  const [filterVisible, setFilterVisible] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.filterButton}>
-        <Button title="Open Filters" onPress={() => setFiltersVisible(true)} />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.buttons}>
+        <Button
+          title="Test Search Results"
+          onPress={() => navigation.navigate("SearchResults")}
+        />
+
+        <Button
+          title="Test Full Map"
+          onPress={() => navigation.navigate("MapScreen")}
+        />
+
+        <Button
+          title="Test Filters"
+          onPress={() => setFilterVisible(true)}
+        />
       </View>
 
       <FilterModal
-        visible={filtersVisible}
-        onClose={() => setFiltersVisible(false)}
-        onApply={handleApplyFilters}
+        visible={filterVisible}
+        onClose={() => setFilterVisible(false)}
+        onApply={(selectedFilters) => {
+          console.log("Selected filters:", selectedFilters);
+          setFilterVisible(false);
+        }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  filterButton: {
-    alignSelf: "center",
-    marginTop: "25%",
+  container: {
+    flex: 1,
+  },
+  buttons: {
+    gap: 12,
+    padding: 20,
   },
 });

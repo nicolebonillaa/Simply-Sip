@@ -10,12 +10,12 @@ import HomeStack from "./HomeStack";
 import FavoritesPage from "../screens/FavoritesPage";
 import ProfilePage from "../screens/ProfilePage";
 
-import HomeFilled from "../../assets/pink icons/pink-home-filled.svg";
-import HomeOutline from "../../assets/pink icons/pink-home-outline.svg";
-import FavoritesFilled from "../../assets/pink icons/pink-favorites-filled.svg";
-import FavoritesOutline from "../../assets/pink icons/pink-favorites-outline.svg";
-import ProfileFilled from "../../assets/pink icons/pink-profile-filled.svg";
-import ProfileOutline from "../../assets/pink icons/pink-profile-outline.svg";
+import HomeFilled from "../../assets/mocha icons/mocha-home-filled.svg";
+import HomeOutline from "../../assets/mocha icons/mocha-home-outline.svg";
+import FavoritesFilled from "../../assets/mocha icons/mocha-favorites-filled.svg";
+import FavoritesOutline from "../../assets/mocha icons/mocha-favorites-outline.svg";
+import ProfileFilled from "../../assets/mocha icons/mocha-profile-filled.svg";
+import ProfileOutline from "../../assets/mocha icons/mocha-profile-outline.svg";
 
 const Tab = createBottomTabNavigator();
 

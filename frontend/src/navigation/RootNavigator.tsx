@@ -1,17 +1,26 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
+import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabs from "./MainTabs";
-import Filters from "../screens/FilterModal";
 
 const RootStack = createNativeStackNavigator();
 
+const AppTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: "#ffffff", // change this one line when you decide on a color
+  },
+};
+
 export default function RootNavigator() {
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={AppTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainTabs" component={MainTabs} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
 }
+
+

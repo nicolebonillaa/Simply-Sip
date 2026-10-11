@@ -70,12 +70,26 @@ export interface RegisterRequest {
   password: string;
 }
 
+export type SortKey = "calories" | "sugar" | "price" | "distance" | "rating";
+ 
 export interface Filters {
+  // "Featured" sort options that are ticked (applied in a fixed order)
+  sort: SortKey[];
+ 
+  // Dietary needs
   vegan: boolean;
   vegetarian: boolean;
   dairyFree: boolean;
   glutenFree: boolean;
+ 
+  // Sliders. null = "Any" (slider left at its far end, no limit)
   maxCalories: number | null;
   maxSugar: number | null;
-  allergens: string[];
+  minPrice: number | null;
+  maxPrice: number | null;
+  maxDistance: number | null;
+ 
+  // Multi-selects
+  allergens: string[]; // allergens to avoid
+  milkTypes: string[];
 }
