@@ -1,11 +1,13 @@
 package com.simplysip.config;
 
+import com.simplysip.model.Allergen;
 import com.simplysip.model.Drink;
 import com.simplysip.model.Favorite;
 import com.simplysip.model.FavoriteId;
 import com.simplysip.model.Location;
 import com.simplysip.model.NutritionFacts;
 import com.simplysip.model.User;
+import com.simplysip.repository.AllergenRepository;
 import com.simplysip.repository.DrinkRepository;
 import com.simplysip.repository.FavoriteRepository;
 import com.simplysip.repository.LocationRepository;
@@ -22,6 +24,7 @@ public class DataSeeder implements CommandLineRunner {
     private final LocationRepository locationRepository;
     private final DrinkRepository drinkRepository;
     private final FavoriteRepository favoriteRepository;
+    private final AllergenRepository allergenRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataSeeder(
@@ -29,11 +32,13 @@ public class DataSeeder implements CommandLineRunner {
             LocationRepository locationRepository,
             DrinkRepository drinkRepository,
             FavoriteRepository favoriteRepository,
+            AllergenRepository allergenRepository,
             PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.locationRepository = locationRepository;
         this.drinkRepository = drinkRepository;
         this.favoriteRepository = favoriteRepository;
+        this.allergenRepository = allergenRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -57,6 +62,7 @@ public class DataSeeder implements CommandLineRunner {
                     drinkRepository.save(drink);
                 }
             });
+            seedAllergensIfEmpty();
             return;
         }
 
@@ -71,6 +77,39 @@ public class DataSeeder implements CommandLineRunner {
         favorite(alice, icedLatte);
         favorite(bob, matcha);
         favorite(cara, smoothie);
+        seedAllergensIfEmpty();
+    }
+
+    private void seedAllergensIfEmpty() {
+        if (allergenRepository.count() > 0) {
+            return;
+        }
+        Allergen dairy = allergen("dairy");
+        Allergen nuts = allergen("nuts");
+        Allergen soy = allergen("soy");
+        allergen("gluten");
+
+        linkAllergen("Iced Latte", dairy);
+        linkAllergen("Cold Brew", dairy);
+        linkAllergen("Matcha Green Tea Latte", dairy);
+        linkAllergen("Matcha Green Tea Latte", soy);
+        linkAllergen("Berry Blast Smoothie", nuts);
+    }
+
+    private Allergen allergen(String name) {
+        Allergen allergen = new Allergen();
+        allergen.setName(name);
+        return allergenRepository.save(allergen);
+    }
+
+    private void linkAllergen(String drinkName, Allergen allergen) {
+        drinkRepository.findAll().stream()
+                .filter(drink -> drinkName.equalsIgnoreCase(drink.getName()))
+                .findFirst()
+                .ifPresent(drink -> {
+                    drink.getAllergens().add(allergen);
+                    drinkRepository.save(drink);
+                });
     }
 
     private User ensureUser(String name, String email, String rawPassword) {

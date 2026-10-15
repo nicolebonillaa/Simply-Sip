@@ -18,7 +18,12 @@ public interface DrinkRepository extends JpaRepository<Drink, Long> {
               AND (:q IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :q, '%')))
               AND (:maxCalories IS NULL OR n.calories IS NULL OR n.calories <= :maxCalories)
               AND (:maxSugar IS NULL OR n.sugar IS NULL OR n.sugar <= :maxSugar)
+              AND (:maxCaffeine IS NULL OR n.caffeine IS NULL OR n.caffeine <= :maxCaffeine)
               AND (:tag IS NULL OR LOWER(d.tags) LIKE LOWER(CONCAT('%', :tag, '%')))
+              AND (:applyExclude = false OR d.id NOT IN (
+                    SELECT d2.id FROM Drink d2 JOIN d2.allergens a
+                    WHERE LOWER(a.name) IN :excludeNames
+              ))
             ORDER BY d.name ASC
             """)
     List<Drink> search(
@@ -27,5 +32,8 @@ public interface DrinkRepository extends JpaRepository<Drink, Long> {
             @Param("q") String q,
             @Param("maxCalories") Integer maxCalories,
             @Param("maxSugar") Double maxSugar,
-            @Param("tag") String tag);
+            @Param("maxCaffeine") Double maxCaffeine,
+            @Param("tag") String tag,
+            @Param("applyExclude") boolean applyExclude,
+            @Param("excludeNames") List<String> excludeNames);
 }

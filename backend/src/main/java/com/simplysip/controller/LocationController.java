@@ -1,6 +1,7 @@
 package com.simplysip.controller;
 
 import com.simplysip.dto.CreateLocationRequest;
+import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Location;
 import com.simplysip.service.LocationService;
 import jakarta.validation.Valid;
@@ -26,11 +27,13 @@ public class LocationController {
         return locationService.findAll();
     }
 
+    /**
+     * Returns one location. A missing id is a JSON 404.
+     */
     @GetMapping("/{id}")
-    public ResponseEntity<Location> getById(@PathVariable Long id) {
+    public Location getById(@PathVariable Long id) {
         return locationService.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .orElseThrow(() -> new NotFoundException("Location not found: " + id));
     }
 
     /**

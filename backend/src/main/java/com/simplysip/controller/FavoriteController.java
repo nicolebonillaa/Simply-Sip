@@ -1,6 +1,7 @@
 package com.simplysip.controller;
 
 import com.simplysip.dto.CreateFavoriteRequest;
+import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Favorite;
 import com.simplysip.model.User;
 import com.simplysip.repository.UserRepository;
@@ -33,6 +34,9 @@ public class FavoriteController {
         return favoriteService.findByUserId(user.getId());
     }
 
+    /**
+     * Returns one favorite. A missing pair is a JSON 404.
+     */
     @GetMapping("/{userId}/{drinkId}")
     public ResponseEntity<Favorite> getById(
             @PathVariable Long userId,
@@ -42,9 +46,10 @@ public class FavoriteController {
         if (!user.getId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        return favoriteService.findById(userId, drinkId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Favorite favorite = favoriteService.findById(userId, drinkId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Favorite not found for user " + userId + " and drink " + drinkId));
+        return ResponseEntity.ok(favorite);
     }
 
     /**
