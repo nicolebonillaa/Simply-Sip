@@ -11,7 +11,9 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "drinks")
@@ -41,6 +43,14 @@ public class Drink {
     @OneToMany(mappedBy = "drink", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @JsonIgnore
     private List<Favorite> favorites = new ArrayList<>();
+
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(
+            name = "drink_allergens",
+            joinColumns = @JoinColumn(name = "drink_id"),
+            inverseJoinColumns = @JoinColumn(name = "allergen_id")
+    )
+    private Set<Allergen> allergens = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

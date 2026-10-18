@@ -1,5 +1,7 @@
 package com.simplysip.service;
 
+import com.simplysip.exception.ConflictException;
+import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Drink;
 import com.simplysip.model.Favorite;
 import com.simplysip.model.FavoriteId;
@@ -44,13 +46,13 @@ public class FavoriteService {
 
     public Favorite create(Long userId, Long drinkId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new NotFoundException("User not found: " + userId));
         Drink drink = drinkRepository.findById(drinkId)
-                .orElseThrow(() -> new IllegalArgumentException("Drink not found: " + drinkId));
+                .orElseThrow(() -> new NotFoundException("Drink not found: " + drinkId));
 
         FavoriteId id = new FavoriteId(userId, drinkId);
         if (favoriteRepository.existsById(id)) {
-            throw new IllegalArgumentException("Favorite already exists for user " + userId + " and drink " + drinkId);
+            throw new ConflictException("Favorite already exists for user " + userId + " and drink " + drinkId);
         }
 
         Favorite favorite = new Favorite();

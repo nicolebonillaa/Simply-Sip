@@ -1,20 +1,20 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.CreateFavoriteRequest;
+import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Favorite;
 import com.simplysip.model.User;
 import com.simplysip.repository.UserRepository;
 import com.simplysip.service.FavoriteService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/favorites")
@@ -34,6 +34,9 @@ public class FavoriteController {
         return favoriteService.findByUserId(user.getId());
     }
 
+    /**
+     * Returns one favorite. A missing pair is a JSON 404.
+     */
     @GetMapping("/{userId}/{drinkId}")
     public ResponseEntity<Favorite> getById(
             @PathVariable Long userId,
@@ -43,27 +46,23 @@ public class FavoriteController {
         if (!user.getId().equals(userId)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        return favoriteService.findById(userId, drinkId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Favorite favorite = favoriteService.findById(userId, drinkId)
+                .orElseThrow(() -> new NotFoundException(
+                        "Favorite not found for user " + userId + " and drink " + drinkId));
+        return ResponseEntity.ok(favorite);
     }
 
+    /**
+     * Saves a favorite for a user and drink. Returns 404 if either id is missing and 409 if the pair already exists.
+     */
     @PostMapping
-    public ResponseEntity<?> create(
-            @Valid @RequestBody FavoriteRequest request,
-            Authentication authentication) {
-        try {
-            User user = currentUser(authentication);
-            Long userId = request.getUserId() != null ? request.getUserId() : user.getId();
-            if (!user.getId().equals(userId)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                        .body(Map.of("error", "Cannot favorite for another user"));
-            }
-            Favorite created = favoriteService.create(userId, request.getDrinkId());
-            return ResponseEntity.status(HttpStatus.CREATED).body(created);
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-        }
+    public ResponseEntity<Favorite> create(@Valid @RequestBody CreateFavoriteRequest request) {
+        Favorite created = favoriteService.create(request.getUserId(), request.getDrinkId());
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{userId}/{drinkId}")
+                .buildAndExpand(request.getUserId(), request.getDrinkId())
+                .toUri();
+        return ResponseEntity.created(location).body(created);
     }
 
     @PutMapping("/{userId}/{drinkId}")
@@ -99,14 +98,5 @@ public class FavoriteController {
     private User currentUser(Authentication authentication) {
         return userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
-    }
-
-    @Getter
-    @Setter
-    public static class FavoriteRequest {
-        private Long userId;
-
-        @NotNull
-        private Long drinkId;
     }
 }
