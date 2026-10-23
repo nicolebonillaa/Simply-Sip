@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
-  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -9,90 +9,155 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import {
+  useNavigation,
+  useRoute,
+} from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 
 import MapPreview from "../components/MapPreview";
 import FilterModal from "./FilterModal";
-import { getNearbySpots, MOCK_SPOTS } from "../data/mapData";
-import { Theme, useTheme } from "../theme/ThemeProvider";
-import type { Filters } from "../types";
+import { CSUN, distanceInMiles } from "../data/mapData";
+import type { MapSpot } from "../data/mapData";
+import { useTheme } from "../theme/ThemeProvider";
+import type { Theme } from "../theme/ThemeProvider";
+import type { Drink, Filters } from "../types";
+import { getDrinks } from "../services/drinks";
 import {
   DEFAULT_FILTERS,
   applyFilters,
   countActiveFilters,
   describeFilters,
+  supportedFilters,
+  toDrinkParams,
 } from "../utils/filters";
 
 export default function SearchResults() {
-  const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { theme } = useTheme();
 
+  return (
+    <SearchResultsContent
+      key={JSON.stringify(route.params ?? {})}
+      initialQuery={route.params?.query ?? ""}
+      initialFilters={supportedFilters(
+        route.params?.filters ?? DEFAULT_FILTERS,
+      )}
+    />
+  );
+}
+
+function SearchResultsContent({
+  initialQuery,
+  initialFilters,
+}: {
+  initialQuery: string;
+  initialFilters: Filters;
+}) {
+  const navigation = useNavigation<any>();
+  const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
 
-  const [query, setQuery] = useState(route.params?.query ?? "");
-  const [openNow, setOpenNow] = useState(false);
+  const [query, setQuery] = useState(initialQuery);
+  const [filters, setFilters] =
+    useState<Filters>(initialFilters);
+
+  const [request, setRequest] = useState(() => ({
+    query: initialQuery,
+    filters: initialFilters,
+  }));
+
+  const [drinks, setDrinks] = useState<Drink[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
   const [filterVisible, setFilterVisible] = useState(false);
-  const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [saved, setSaved] = useState<Set<number>>(new Set());
 
-  const [filters, setFilters] = useState<Filters>(
-    route.params?.filters ?? DEFAULT_FILTERS,
-  );
-
-  const [appliedFilters, setAppliedFilters] = useState<Filters>(
-    route.params?.filters ?? DEFAULT_FILTERS,
-  );
-
-  // Updates the screen when HomePage sends a new search.
   useEffect(() => {
-    if (typeof route.params?.query === "string") {
-      setQuery(route.params.query);
+    let active = true;
+
+    async function loadResults() {
+      setLoading(true);
+      setError(null);
+      setDrinks([]);
+
+      try {
+        const items = await getDrinks(
+          toDrinkParams(request.query, request.filters),
+        );
+
+        if (active) setDrinks(items);
+      } catch {
+        if (active) {
+          setError(
+            "Unable to load search results. Please try again.",
+          );
+        }
+      } finally {
+        if (active) setLoading(false);
+      }
     }
 
-    if (route.params?.filters) {
-      setFilters(route.params.filters);
-      setAppliedFilters(route.params.filters);
-    }
-  }, [route.params]);
+    void loadResults();
 
-  const hasPending = useMemo(
-    () => JSON.stringify(filters) !== JSON.stringify(appliedFilters),
-    [filters, appliedFilters],
-  );
+    return () => {
+      active = false;
+    };
+  }, [request, retry]);
+
+  const results = useMemo(() => {
+    const nearbyDrinks = drinks.filter((drink) => {
+      const location = drink.location;
+
+      return (
+        location !== null &&
+        Number.isFinite(location.latitude) &&
+        Number.isFinite(location.longitude) &&
+        distanceInMiles(CSUN, location) <= 2
+      );
+    });
+
+    return applyFilters(nearbyDrinks, request.filters, CSUN);
+  }, [drinks, request.filters]);
+
+  const mapSpots = useMemo(() => {
+    const locations = new Map<number, MapSpot>();
+
+    for (const drink of results) {
+      if (drink.location) {
+        const { id, name, latitude, longitude } =
+          drink.location;
+
+        locations.set(id, {
+          id,
+          name,
+          latitude,
+          longitude,
+        });
+      }
+    }
+
+    return Array.from(locations.values());
+  }, [results]);
+
+  const hasPending =
+    query.trim() !== request.query.trim() ||
+    JSON.stringify(filters) !==
+      JSON.stringify(request.filters);
 
   const activeCount = countActiveFilters(filters);
-
-  const appliedTags = useMemo(
-    () => describeFilters(appliedFilters),
-    [appliedFilters],
-  );
+  const appliedTags = describeFilters(request.filters);
 
   const runSearch = () => {
-    setAppliedFilters(filters);
+    setRequest({
+      query: query.trim(),
+      filters,
+    });
   };
 
-  const nearbySpots = useMemo(() => {
-    let spots = getNearbySpots(MOCK_SPOTS);
-
-    if (query.trim()) {
-      const searchText = query.toLowerCase();
-
-      spots = spots.filter((spot) =>
-        spot.name.toLowerCase().includes(searchText),
-      );
-    }
-
-    if (openNow) {
-      spots = spots.filter((spot) => (spot as any).isOpen !== false);
-    }
-
-    return applyFilters(spots, appliedFilters);
-  }, [query, openNow, appliedFilters]);
-
-  const toggleSaved = (id: string) => {
-    setSaved((previous) => {
-      const next = new Set(previous);
+  const toggleSaved = (id: number) => {
+    setSaved((current) => {
+      const next = new Set(current);
 
       if (next.has(id)) {
         next.delete(id);
@@ -109,14 +174,22 @@ export default function SearchResults() {
       <View style={styles.searchRow}>
         <View style={styles.searchBox}>
           <Pressable
-            style={[styles.searchButton, hasPending && styles.searchButtonHot]}
+            style={[
+              styles.searchButton,
+              hasPending && styles.searchButtonHot,
+            ]}
             onPress={runSearch}
+            accessibilityRole="button"
             accessibilityLabel="Search with filters"
           >
             <Ionicons
               name="search"
               size={18}
-              color={hasPending ? theme.buttonText : theme.subtext}
+              color={
+                hasPending
+                  ? theme.buttonText
+                  : theme.subtext
+              }
             />
           </Pressable>
 
@@ -124,7 +197,7 @@ export default function SearchResults() {
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={runSearch}
-            placeholder="Search drink spots"
+            placeholder="Search drinks"
             placeholderTextColor={theme.subtext}
             style={styles.searchInput}
             returnKeyType="search"
@@ -135,11 +208,17 @@ export default function SearchResults() {
             onPress={() => setFilterVisible(true)}
             accessibilityLabel="Open filters"
           >
-            <Ionicons name="options-outline" size={22} color={theme.icon} />
+            <Ionicons
+              name="options-outline"
+              size={22}
+              color={theme.icon}
+            />
 
             {activeCount > 0 && (
               <View style={styles.badge}>
-                <Text style={styles.badgeText}>{activeCount}</Text>
+                <Text style={styles.badgeText}>
+                  {activeCount}
+                </Text>
               </View>
             )}
           </Pressable>
@@ -148,19 +227,15 @@ export default function SearchResults() {
 
       <View style={styles.chipRow}>
         <View style={[styles.chip, styles.chipActive]}>
-          <Text style={[styles.chipText, styles.chipTextActive]}>
-            Nearest
+          <Text
+            style={[
+              styles.chipText,
+              styles.chipTextActive,
+            ]}
+          >
+            Within 2 miles of CSUN
           </Text>
         </View>
-
-        <Pressable
-          style={[styles.chip, openNow && styles.chipActive]}
-          onPress={() => setOpenNow((value) => !value)}
-        >
-          <Text style={[styles.chipText, openNow && styles.chipTextActive]}>
-            Open now
-          </Text>
-        </Pressable>
       </View>
 
       {appliedTags.length > 0 && (
@@ -173,110 +248,176 @@ export default function SearchResults() {
         </View>
       )}
 
-      <MapPreview
-        spots={nearbySpots}
-        onPress={() =>
-          navigation.navigate("MapScreen", {
-            spots: nearbySpots,
-          })
-        }
-      />
+      {!loading && !error && mapSpots.length > 0 && (
+        <MapPreview
+          spots={mapSpots}
+          onPress={() =>
+            navigation.navigate("MapScreen", {
+              spots: mapSpots,
+            })
+          }
+        />
+      )}
 
       <View style={styles.headingRow}>
-        <Text style={styles.heading}>Nearby drink spots</Text>
-
-        <Text style={styles.count}>
-          {nearbySpots.length}{" "}
-          {nearbySpots.length === 1 ? "result" : "results"}
+        <Text style={styles.heading}>
+          Drinks near CSUN
         </Text>
+
+        {!loading && !error && (
+          <Text style={styles.count}>
+            {results.length}{" "}
+            {results.length === 1 ? "result" : "results"}
+          </Text>
+        )}
       </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={styles.container}
+      edges={["top"]}
+    >
       <FlatList
-        data={nearbySpots}
+        data={loading || error ? [] : results}
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={header}
         ListEmptyComponent={
-          <Text style={styles.empty}>No drink spots match your search.</Text>
+          loading ? (
+            <ActivityIndicator
+              color={theme.icon}
+              accessibilityLabel="Loading search results"
+            />
+          ) : error ? (
+            <View>
+              <Text
+                style={styles.empty}
+                accessibilityRole="alert"
+              >
+                {error}
+              </Text>
+
+              <Pressable
+                onPress={() =>
+                  setRetry((value) => value + 1)
+                }
+                accessibilityRole="button"
+              >
+                <Text style={styles.empty}>
+                  Try again
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.empty}>
+              No drinks match your search. Try changing
+              your search or filters.
+            </Text>
+          )
         }
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
-          const spot = item as any;
-          const id = String(item.id);
-          const isSaved = saved.has(id);
+          const isSaved = saved.has(item.id);
+          const nutrition = item.nutritionFacts;
 
-          const details = [
-            spot.category,
-            spot.distance ?? "Within 2 miles of CSUN",
+          const distance = item.location
+            ? distanceInMiles(CSUN, item.location)
+            : null;
+
+          const nutritionText = [
+            nutrition?.calories != null
+              ? `${nutrition.calories} cal`
+              : null,
+            nutrition?.sugar != null
+              ? `${nutrition.sugar} g sugar`
+              : null,
           ]
             .filter(Boolean)
-            .join("  ·  ");
+            .join(" · ");
 
           return (
-            <Pressable style={styles.card}>
+            <View style={styles.card}>
               <View style={styles.photo}>
-                {spot.image ? (
-                  <Image
-                    source={{ uri: spot.image }}
-                    style={styles.photoImage}
-                  />
-                ) : (
-                  <Ionicons
-                    name="cafe-outline"
-                    size={34}
-                    color={theme.subtext}
-                  />
-                )}
+                <Ionicons
+                  name="cafe-outline"
+                  size={34}
+                  color={theme.subtext}
+                />
 
                 <Pressable
                   style={styles.saveButton}
-                  onPress={() => toggleSaved(id)}
-                  accessibilityLabel="Save to favorites"
+                  onPress={() => toggleSaved(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    isSaved
+                      ? "Remove temporary bookmark"
+                      : "Bookmark for this session"
+                  }
+                  accessibilityState={{
+                    selected: isSaved,
+                  }}
                 >
                   <Ionicons
-                    name={isSaved ? "bookmark" : "bookmark-outline"}
+                    name={
+                      isSaved
+                        ? "bookmark"
+                        : "bookmark-outline"
+                    }
                     size={18}
                     color={theme.icon}
                   />
                 </Pressable>
               </View>
 
-              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.name}>
+                {item.name}
+              </Text>
 
-              <View style={styles.metaRow}>
-                {spot.rating != null && (
-                  <>
-                    <Ionicons name="star" size={13} color={theme.subtext} />
+              <Text style={styles.meta}>
+                {item.location?.name ??
+                  "Café unavailable"}
+              </Text>
 
-                    <Text style={styles.meta}>
-                      {spot.rating}
-                      {spot.reviewCount != null
-                        ? ` (${spot.reviewCount})`
-                        : ""}
-                      {"  ·  "}
-                    </Text>
-                  </>
-                )}
+              <Text style={styles.meta}>
+                {[
+                  item.category,
+                  distance !== null
+                    ? `${distance.toFixed(2)} mi from CSUN`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </Text>
 
-                <Text style={styles.meta}>{details}</Text>
-              </View>
-            </Pressable>
+              <Text style={styles.meta}>
+                {nutritionText ||
+                  "Nutrition information unavailable"}
+              </Text>
+            </View>
           );
         }}
       />
 
-      <FilterModal
-        visible={filterVisible}
-        onClose={() => setFilterVisible(false)}
-        onApply={(selectedFilters) => {
-          setFilters(selectedFilters);
-          setFilterVisible(false);
-        }}
-      />
+      {filterVisible && (
+        <FilterModal
+          visible={filterVisible}
+          initialFilters={filters}
+          onClose={() => setFilterVisible(false)}
+          onApply={(selectedFilters) => {
+            const nextFilters =
+              supportedFilters(selectedFilters);
+
+            setFilters(nextFilters);
+            setRequest({
+              query: query.trim(),
+              filters: nextFilters,
+            });
+            setFilterVisible(false);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -285,6 +426,7 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     container: {
       flex: 1,
+      backgroundColor: t.background,
     },
     listContent: {
       paddingHorizontal: 16,
