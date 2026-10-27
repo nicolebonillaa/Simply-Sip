@@ -1,6 +1,7 @@
 package com.simplysip.service;
 
 import com.simplysip.dto.CreateNutritionFactsRequest;
+import com.simplysip.dto.DrinkResponse;
 import com.simplysip.exception.ConflictException;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Drink;
@@ -38,6 +39,42 @@ public class DrinkService {
         this.allergenRepository = allergenRepository;
     }
 
+    public List<DrinkResponse> findAllResponses() {
+        return drinkRepository.findAll().stream().map(DrinkResponse::new).toList();
+    }
+
+    public List<DrinkResponse> searchResponses(
+            String category,
+            Long locationId,
+            String q,
+            Integer maxCalories,
+            Double maxSugar,
+            Double maxCaffeine,
+            Double minPrice,
+            Double maxPrice,
+            String tag,
+            String excludeAllergens,
+            String milkTypes) {
+        return search(
+                category,
+                locationId,
+                q,
+                maxCalories,
+                maxSugar,
+                maxCaffeine,
+                minPrice,
+                maxPrice,
+                tag,
+                excludeAllergens,
+                milkTypes).stream().map(DrinkResponse::new).toList();
+    }
+
+    public DrinkResponse getResponseById(Long id) {
+        return drinkRepository.findById(id)
+                .map(DrinkResponse::new)
+                .orElseThrow(() -> new NotFoundException("Drink not found: " + id));
+    }
+
     public List<Drink> findAll() {
         return drinkRepository.findAll();
     }
@@ -49,9 +86,16 @@ public class DrinkService {
             Integer maxCalories,
             Double maxSugar,
             Double maxCaffeine,
+            Double minPrice,
+            Double maxPrice,
             String tag,
-            String excludeAllergens) {
-        List<String> names = parseAllergenNames(excludeAllergens);
+            String excludeAllergens,
+            String milkTypes) {
+        if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
+            throw new IllegalArgumentException("minPrice cannot be greater than maxPrice");
+        }
+
+        List<String> names = parseCsvLower(excludeAllergens);
         if (!names.isEmpty()) {
             List<String> unknown = new ArrayList<>();
             for (String name : names) {
@@ -63,6 +107,16 @@ public class DrinkService {
                 throw new IllegalArgumentException("Unknown allergen: " + String.join(", ", unknown));
             }
         }
+
+        List<String> milks = parseCsvTrimmed(milkTypes);
+        if (milks.size() > 6) {
+            throw new IllegalArgumentException("At most 6 milkTypes are allowed");
+        }
+        String[] milkSlots = new String[6];
+        for (int i = 0; i < milks.size(); i++) {
+            milkSlots[i] = milks.get(i).toLowerCase().replace(" ", "");
+        }
+
         return drinkRepository.search(
                 blankToNull(category),
                 locationId,
@@ -70,19 +124,31 @@ public class DrinkService {
                 maxCalories,
                 maxSugar,
                 maxCaffeine,
+                minPrice,
+                maxPrice,
                 blankToNull(tag),
                 !names.isEmpty(),
-                names.isEmpty() ? List.of("__none__") : names);
+                names.isEmpty() ? List.of("__none__") : names,
+                !milks.isEmpty(),
+                milkSlots[0],
+                milkSlots[1],
+                milkSlots[2],
+                milkSlots[3],
+                milkSlots[4],
+                milkSlots[5]);
     }
 
-    private static List<String> parseAllergenNames(String excludeAllergens) {
-        if (excludeAllergens == null || excludeAllergens.isBlank()) {
+    private static List<String> parseCsvLower(String csv) {
+        return parseCsvTrimmed(csv).stream().map(String::toLowerCase).distinct().toList();
+    }
+
+    private static List<String> parseCsvTrimmed(String csv) {
+        if (csv == null || csv.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(excludeAllergens.split(","))
+        return Arrays.stream(csv.split(","))
                 .map(String::trim)
-                .filter(name -> !name.isEmpty())
-                .map(String::toLowerCase)
+                .filter(part -> !part.isEmpty())
                 .distinct()
                 .toList();
     }
@@ -109,6 +175,10 @@ public class DrinkService {
         return drinkRepository.save(drink);
     }
 
+    public DrinkResponse createResponse(String name, String category, Long locationId) {
+        return new DrinkResponse(create(name, category, locationId));
+    }
+
     public NutritionFacts addNutritionFacts(Long drinkId, CreateNutritionFactsRequest request) {
         Drink drink = drinkRepository.findById(drinkId)
                 .orElseThrow(() -> new NotFoundException("Drink not found: " + drinkId));
@@ -128,6 +198,8 @@ public class DrinkService {
             existing.setName(updates.getName());
             existing.setCategory(updates.getCategory());
             existing.setTags(updates.getTags());
+            existing.setPrice(updates.getPrice());
+            existing.setMilkTypes(updates.getMilkTypes());
 
             if (updates.getLocation() != null && updates.getLocation().getId() != null) {
                 Location location = locationRepository.findById(updates.getLocation().getId())

@@ -32,6 +32,11 @@ public class Drink {
 
     private String tags;
 
+    private Double price;
+
+    @Column(name = "milk_types")
+    private String milkTypes;
+
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "location_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})

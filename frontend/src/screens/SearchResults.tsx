@@ -14,15 +14,27 @@ import { Ionicons } from "@expo/vector-icons";
 
 import MapPreview from "../components/MapPreview";
 import FilterModal from "./FilterModal";
-import { getNearbySpots, MOCK_SPOTS } from "../data/mapData";
+import { getNearbySpots } from "../data/mapData";
+import { getDrinks } from "../services/drinks";
 import { Theme, useTheme } from "../theme/ThemeProvider";
-import type { Filters } from "../types";
+import type { Drink, Filters } from "../types";
 import {
   DEFAULT_FILTERS,
   applyFilters,
   countActiveFilters,
   describeFilters,
 } from "../utils/filters";
+
+type DrinkSpot = Drink & { latitude: number; longitude: number };
+
+function toDrinkSpot(drink: Drink): DrinkSpot | null {
+  const latitude = drink.location?.latitude;
+  const longitude = drink.location?.longitude;
+  if (typeof latitude !== "number" || typeof longitude !== "number") {
+    return null;
+  }
+  return { ...drink, latitude, longitude };
+}
 
 export default function SearchResults() {
   const navigation = useNavigation<any>();
@@ -35,6 +47,9 @@ export default function SearchResults() {
   const [openNow, setOpenNow] = useState(false);
   const [filterVisible, setFilterVisible] = useState(false);
   const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [drinks, setDrinks] = useState<DrinkSpot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<Filters>(
     route.params?.filters ?? DEFAULT_FILTERS,
@@ -56,6 +71,33 @@ export default function SearchResults() {
     }
   }, [route.params]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const data = await getDrinks();
+        if (cancelled) return;
+        setDrinks(
+          data
+            .map(toDrinkSpot)
+            .filter((spot): spot is DrinkSpot => spot !== null),
+        );
+      } catch {
+        if (!cancelled) {
+          setLoadError("Could not load drinks. Is the API running?");
+          setDrinks([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const hasPending = useMemo(
     () => JSON.stringify(filters) !== JSON.stringify(appliedFilters),
     [filters, appliedFilters],
@@ -73,7 +115,7 @@ export default function SearchResults() {
   };
 
   const nearbySpots = useMemo(() => {
-    let spots = getNearbySpots(MOCK_SPOTS);
+    let spots = getNearbySpots(drinks);
 
     if (query.trim()) {
       const searchText = query.toLowerCase();
@@ -88,7 +130,7 @@ export default function SearchResults() {
     }
 
     return applyFilters(spots, appliedFilters);
-  }, [query, openNow, appliedFilters]);
+  }, [drinks, query, openNow, appliedFilters]);
 
   const toggleSaved = (id: string) => {
     setSaved((previous) => {
@@ -200,7 +242,13 @@ export default function SearchResults() {
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={header}
         ListEmptyComponent={
-          <Text style={styles.empty}>No drink spots match your search.</Text>
+          <Text style={styles.empty}>
+            {loading
+              ? "Loading drinks…"
+              : loadError
+                ? loadError
+                : "No drink spots match your search."}
+          </Text>
         }
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
