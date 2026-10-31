@@ -17,12 +17,19 @@ import { Ionicons } from "@expo/vector-icons";
 
 import MapPreview from "../components/MapPreview";
 import FilterModal from "./FilterModal";
+<<<<<<< HEAD
+import { getNearbySpots } from "../data/mapData";
+import { getDrinks } from "../services/drinks";
+import { Theme, useTheme } from "../theme/ThemeProvider";
+import type { Drink, Filters } from "../types";
+=======
 import { CSUN, distanceInMiles } from "../data/mapData";
 import type { MapSpot } from "../data/mapData";
 import { useTheme } from "../theme/ThemeProvider";
 import type { Theme } from "../theme/ThemeProvider";
 import type { Drink, Filters } from "../types";
 import { getDrinks } from "../services/drinks";
+>>>>>>> origin/main
 import {
   DEFAULT_FILTERS,
   applyFilters,
@@ -31,6 +38,17 @@ import {
   supportedFilters,
   toDrinkParams,
 } from "../utils/filters";
+
+type DrinkSpot = Drink & { latitude: number; longitude: number };
+
+function toDrinkSpot(drink: Drink): DrinkSpot | null {
+  const latitude = drink.location?.latitude;
+  const longitude = drink.location?.longitude;
+  if (typeof latitude !== "number" || typeof longitude !== "number") {
+    return null;
+  }
+  return { ...drink, latitude, longitude };
+}
 
 export default function SearchResults() {
   const route = useRoute<any>();
@@ -71,7 +89,14 @@ function SearchResultsContent({
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [filterVisible, setFilterVisible] = useState(false);
+<<<<<<< HEAD
+  const [saved, setSaved] = useState<Set<string>>(new Set());
+  const [drinks, setDrinks] = useState<DrinkSpot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+=======
   const [saved, setSaved] = useState<Set<number>>(new Set());
+>>>>>>> origin/main
 
   useEffect(() => {
     let active = true;
@@ -100,6 +125,39 @@ function SearchResultsContent({
 
     void loadResults();
 
+<<<<<<< HEAD
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      setLoadError(null);
+      try {
+        const data = await getDrinks();
+        if (cancelled) return;
+        setDrinks(
+          data
+            .map(toDrinkSpot)
+            .filter((spot): spot is DrinkSpot => spot !== null),
+        );
+      } catch {
+        if (!cancelled) {
+          setLoadError("Could not load drinks. Is the API running?");
+          setDrinks([]);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const hasPending = useMemo(
+    () => JSON.stringify(filters) !== JSON.stringify(appliedFilters),
+    [filters, appliedFilters],
+  );
+=======
     return () => {
       active = false;
     };
@@ -144,6 +202,7 @@ function SearchResultsContent({
     query.trim() !== request.query.trim() ||
     JSON.stringify(filters) !==
       JSON.stringify(request.filters);
+>>>>>>> origin/main
 
   const activeCount = countActiveFilters(filters);
   const appliedTags = describeFilters(request.filters);
@@ -155,9 +214,33 @@ function SearchResultsContent({
     });
   };
 
+<<<<<<< HEAD
+  const nearbySpots = useMemo(() => {
+    let spots = getNearbySpots(drinks);
+
+    if (query.trim()) {
+      const searchText = query.toLowerCase();
+
+      spots = spots.filter((spot) =>
+        spot.name.toLowerCase().includes(searchText),
+      );
+    }
+
+    if (openNow) {
+      spots = spots.filter((spot) => (spot as any).isOpen !== false);
+    }
+
+    return applyFilters(spots, appliedFilters);
+  }, [drinks, query, openNow, appliedFilters]);
+
+  const toggleSaved = (id: string) => {
+    setSaved((previous) => {
+      const next = new Set(previous);
+=======
   const toggleSaved = (id: number) => {
     setSaved((current) => {
       const next = new Set(current);
+>>>>>>> origin/main
 
       if (next.has(id)) {
         next.delete(id);
@@ -284,6 +367,15 @@ function SearchResultsContent({
         keyExtractor={(item) => String(item.id)}
         ListHeaderComponent={header}
         ListEmptyComponent={
+<<<<<<< HEAD
+          <Text style={styles.empty}>
+            {loading
+              ? "Loading drinks…"
+              : loadError
+                ? loadError
+                : "No drink spots match your search."}
+          </Text>
+=======
           loading ? (
             <ActivityIndicator
               color={theme.icon}
@@ -315,6 +407,7 @@ function SearchResultsContent({
               your search or filters.
             </Text>
           )
+>>>>>>> origin/main
         }
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"

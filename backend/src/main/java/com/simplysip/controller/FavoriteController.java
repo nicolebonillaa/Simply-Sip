@@ -1,6 +1,8 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.ApiError;
 import com.simplysip.dto.CreateFavoriteRequest;
+import com.simplysip.dto.FavoriteResponse;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Favorite;
 import com.simplysip.model.User;
@@ -29,35 +31,39 @@ public class FavoriteController {
     }
 
     @GetMapping
-    public List<Favorite> getAll(Authentication authentication) {
+    public List<FavoriteResponse> getAll(Authentication authentication) {
         User user = currentUser(authentication);
-        return favoriteService.findByUserId(user.getId());
+        return favoriteService.findByUserId(user.getId()).stream()
+                .map(FavoriteResponse::new)
+                .toList();
     }
 
     /**
      * Returns one favorite. A missing pair is a JSON 404.
      */
     @GetMapping("/{userId}/{drinkId}")
-    public ResponseEntity<Favorite> getById(
+    public ResponseEntity<?> getById(
             @PathVariable Long userId,
             @PathVariable Long drinkId,
             Authentication authentication) {
         User user = currentUser(authentication);
         if (!user.getId().equals(userId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiError(HttpStatus.FORBIDDEN.value(), "Not allowed to view another user's favorite"));
         }
         Favorite favorite = favoriteService.findById(userId, drinkId)
                 .orElseThrow(() -> new NotFoundException(
                         "Favorite not found for user " + userId + " and drink " + drinkId));
-        return ResponseEntity.ok(favorite);
+        return ResponseEntity.ok(new FavoriteResponse(favorite));
     }
 
     /**
      * Saves a favorite for a user and drink. Returns 404 if either id is missing and 409 if the pair already exists.
      */
     @PostMapping
-    public ResponseEntity<Favorite> create(@Valid @RequestBody CreateFavoriteRequest request) {
-        Favorite created = favoriteService.create(request.getUserId(), request.getDrinkId());
+    public ResponseEntity<FavoriteResponse> create(@Valid @RequestBody CreateFavoriteRequest request) {
+        FavoriteResponse created = new FavoriteResponse(
+                favoriteService.create(request.getUserId(), request.getDrinkId()));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{userId}/{drinkId}")
                 .buildAndExpand(request.getUserId(), request.getDrinkId())
@@ -66,31 +72,35 @@ public class FavoriteController {
     }
 
     @PutMapping("/{userId}/{drinkId}")
-    public ResponseEntity<Favorite> update(
+    public ResponseEntity<?> update(
             @PathVariable Long userId,
             @PathVariable Long drinkId,
             @RequestBody(required = false) Favorite body,
             Authentication authentication) {
         User user = currentUser(authentication);
         if (!user.getId().equals(userId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiError(HttpStatus.FORBIDDEN.value(), "Not allowed to update another user's favorite"));
         }
-        return favoriteService.update(userId, drinkId, body)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Favorite favorite = favoriteService.update(userId, drinkId, body)
+                .orElseThrow(() -> new NotFoundException(
+                        "Favorite not found for user " + userId + " and drink " + drinkId));
+        return ResponseEntity.ok(new FavoriteResponse(favorite));
     }
 
     @DeleteMapping("/{userId}/{drinkId}")
-    public ResponseEntity<Void> delete(
+    public ResponseEntity<?> delete(
             @PathVariable Long userId,
             @PathVariable Long drinkId,
             Authentication authentication) {
         User user = currentUser(authentication);
         if (!user.getId().equals(userId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ApiError(HttpStatus.FORBIDDEN.value(), "Not allowed to delete another user's favorite"));
         }
         if (!favoriteService.delete(userId, drinkId)) {
-            return ResponseEntity.notFound().build();
+            throw new NotFoundException(
+                    "Favorite not found for user " + userId + " and drink " + drinkId);
         }
         return ResponseEntity.noContent().build();
     }
