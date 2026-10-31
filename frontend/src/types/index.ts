@@ -1,18 +1,33 @@
+export interface Allergen {
+  id: number;
+  name: string;
+}
+
 export interface Drink {
   id: number;
   name: string;
   category: string;
+<<<<<<< HEAD
   tags: string;
   price?: number | null;
   milkTypes?: string[];
   allergens?: string[];
   location: Location;
   nutritionFacts: NutritionFacts;
+=======
+  tags: string | null;
+  location: Location | null;
+  nutritionFacts: NutritionFacts | null;
+  allergens?: Allergen[] | null;
+>>>>>>> origin/main
   createdAt: string;
   updatedAt: string;
 }
 
 export interface DrinkParams {
+  q?: string;
+  maxCaffeine?: number;
+  excludeAllergens?: string;
   category?: string;
   locationId?: number;
   q?: string;
@@ -38,9 +53,9 @@ export interface Location {
 
 export interface NutritionFacts {
   id: number;
-  calories: number;
-  sugar: number;
-  caffeine: number;
+  calories: number | null;
+  sugar: number | null;
+  caffeine: number | null;
 }
 
 export interface User {
@@ -79,26 +94,27 @@ export interface RegisterRequest {
   password: string;
 }
 
-export type SortKey = "calories" | "sugar" | "price" | "distance" | "rating";
- 
+export type SortKey =
+  | "calories"
+  | "sugar"
+  | "price"
+  | "distance"
+  | "rating";
+
 export interface Filters {
-  // "Featured" sort options that are ticked (applied in a fixed order)
   sort: SortKey[];
- 
-  // Dietary needs
+
   vegan: boolean;
   vegetarian: boolean;
   dairyFree: boolean;
   glutenFree: boolean;
- 
-  // Sliders. null = "Any" (slider left at its far end, no limit)
+
   maxCalories: number | null;
   maxSugar: number | null;
   minPrice: number | null;
   maxPrice: number | null;
   maxDistance: number | null;
- 
-  // Multi-selects
-  allergens: string[]; // allergens to avoid
+
+  allergens: string[];
   milkTypes: string[];
 }
