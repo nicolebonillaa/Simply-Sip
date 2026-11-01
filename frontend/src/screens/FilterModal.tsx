@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Modal,
   View,
@@ -8,26 +8,28 @@ import {
   ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+
+import { getAllergens } from "../services/drinks";
 import RangeSlider from "../components/RangeSlider";
 import { useTheme } from "../theme/ThemeProvider";
 import type { Filters, SortKey } from "../types";
 import {
-  ALLERGEN_OPTIONS,
   DEFAULT_FILTERS,
   FILTER_LIMITS,
   MILK_OPTIONS,
   SORT_OPTIONS,
-  priceLabel,
+  supportedFilters,
 } from "../utils/filters";
 
 interface FiltersProps {
   visible: boolean;
+  initialFilters?: Filters;
   onClose: () => void;
   onApply: (filters: Filters) => void;
 }
 
 interface CheckboxProps {
-  label: string; 
+  label: string;
   checked: boolean;
   onPress: () => void;
 }
@@ -57,62 +59,103 @@ const TITLES: Record<Screen, string> = {
 
 const L = FILTER_LIMITS;
 
-function Checkbox({ label, checked, onPress }: CheckboxProps) {
+function Checkbox({
+  label,
+  checked,
+  onPress,
+}: CheckboxProps) {
   const { theme: t } = useTheme();
 
   return (
     <Pressable
-      style={[styles.option, { borderBottomColor: t.divider }]}
+      style={[
+        styles.option,
+        { borderBottomColor: t.divider },
+      ]}
       onPress={onPress}
     >
-      <Text style={[styles.optionText, { color: t.text }]}>{label}</Text>
+      <Text
+        style={[styles.optionText, { color: t.text }]}
+      >
+        {label}
+      </Text>
 
       <View
         style={[
           styles.checkbox,
           {
             borderColor: checked ? t.icon : t.subtext,
-            backgroundColor: checked ? t.icon : "transparent",
+            backgroundColor: checked
+              ? t.icon
+              : "transparent",
           },
         ]}
       >
         {checked && (
-          <Text style={[styles.checkmark, { color: t.buttonText }]}>✔</Text>
+          <Text
+            style={[
+              styles.checkmark,
+              { color: t.buttonText },
+            ]}
+          >
+            ✔
+          </Text>
         )}
       </View>
     </Pressable>
   );
 }
 
-// One row on the main list: label on the left, optional value + chevron on the right
 function NavRow({
   label,
   value,
+  disabled = false,
   onPress,
 }: {
   label: string;
   value?: string;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const { theme: t } = useTheme();
 
   return (
     <Pressable
-      style={[styles.option, { borderBottomColor: t.divider }]}
+      style={[
+        styles.option,
+        {
+          borderBottomColor: t.divider,
+          opacity: disabled ? 0.5 : 1,
+        },
+      ]}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
       onPress={onPress}
     >
-      <Text style={[styles.optionText, { color: t.text }]}>{label}</Text>
+      <Text
+        style={[styles.optionText, { color: t.text }]}
+      >
+        {label}
+      </Text>
 
       <View style={styles.optionRight}>
         {!!value && (
           <Text
-            style={[styles.optionValue, { color: t.subtext }]}
+            style={[
+              styles.optionValue,
+              { color: t.subtext },
+            ]}
             numberOfLines={1}
           >
             {value}
           </Text>
         )}
-        <Ionicons name="chevron-forward" size={22} color={t.icon} />
+
+        <Ionicons
+          name="chevron-forward"
+          size={22}
+          color={t.icon}
+        />
       </View>
     </Pressable>
   );
@@ -120,32 +163,84 @@ function NavRow({
 
 export default function FilterModal({
   visible,
+  initialFilters = DEFAULT_FILTERS,
   onClose,
   onApply,
 }: FiltersProps) {
   const { theme: t } = useTheme();
 
-  const [screen, setScreen] = useState<Screen>("main");
+  const [screen, setScreen] =
+    useState<Screen>("main");
 
-  const [sort, setSort] = useState<SortKey[]>([]);
+  const [sort, setSort] =
+    useState<SortKey[]>(initialFilters.sort);
 
-  const [vegan, setVegan] = useState(false);
-  const [vegetarian, setVegetarian] = useState(false);
-  const [dairyFree, setDairyFree] = useState(false);
-  const [glutenFree, setGlutenFree] = useState(false);
+  const [vegan, setVegan] =
+    useState(initialFilters.vegan);
+  const [vegetarian, setVegetarian] =
+    useState(initialFilters.vegetarian);
+  const [dairyFree, setDairyFree] =
+    useState(initialFilters.dairyFree);
+  const [glutenFree, setGlutenFree] =
+    useState(initialFilters.glutenFree);
 
-  // Sliders hold a number; the far end of each slider means "Any" (saved as null)
-  const [maxCalories, setMaxCalories] = useState<number>(L.calories.max);
-  const [maxSugar, setMaxSugar] = useState<number>(L.sugar.max);
-  const [minPrice, setMinPrice] = useState<number>(L.price.min);
-  const [maxPrice, setMaxPrice] = useState<number>(L.price.max);
-  const [maxDistance, setMaxDistance] = useState<number>(L.distance.max);
+  const [maxCalories, setMaxCalories] = useState(
+    initialFilters.maxCalories ?? L.calories.max,
+  );
+  const [maxSugar, setMaxSugar] = useState(
+    initialFilters.maxSugar ?? L.sugar.max,
+  );
+  const [minPrice, setMinPrice] = useState(
+    initialFilters.minPrice ?? L.price.min,
+  );
+  const [maxPrice, setMaxPrice] = useState(
+    initialFilters.maxPrice ?? L.price.max,
+  );
+  const [maxDistance, setMaxDistance] = useState(
+    initialFilters.maxDistance ?? L.distance.max,
+  );
 
-  const [allergens, setAllergens] = useState<string[]>([]);
-  const [milkTypes, setMilkTypes] = useState<string[]>([]);
+  const [allergenOptions, setAllergenOptions] =
+    useState<string[]>([]);
+  const [allergenLoading, setAllergenLoading] =
+    useState(true);
+  const [allergenError, setAllergenError] =
+    useState(false);
+  const [allergenRetry, setAllergenRetry] =
+    useState(0);
 
-  // Last applied filters, so closing without DONE can put everything back
-  const savedFilters = useRef<Filters>(DEFAULT_FILTERS);
+  useEffect(() => {
+    if (!visible) return;
+
+    let active = true;
+
+    getAllergens()
+      .then((items) => {
+        if (active) {
+          setAllergenOptions(
+            items.map((item) => item.name),
+          );
+        }
+      })
+      .catch(() => {
+        if (active) setAllergenError(true);
+      })
+      .finally(() => {
+        if (active) setAllergenLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [visible, allergenRetry]);
+
+  const [allergens, setAllergens] =
+    useState<string[]>(initialFilters.allergens);
+  const [milkTypes, setMilkTypes] =
+    useState<string[]>(initialFilters.milkTypes);
+
+  const savedFilters =
+    useRef<Filters>(initialFilters);
 
   const toggleAllergen = (allergen: string) => {
     setAllergens((current) =>
@@ -171,46 +266,59 @@ export default function FilterModal({
     );
   };
 
-  const loadFilters = (f: Filters) => {
-    setSort(f.sort);
-    setVegan(f.vegan);
-    setVegetarian(f.vegetarian);
-    setDairyFree(f.dairyFree);
-    setGlutenFree(f.glutenFree);
-    setMaxCalories(f.maxCalories ?? L.calories.max);
-    setMaxSugar(f.maxSugar ?? L.sugar.max);
-    setMinPrice(f.minPrice ?? L.price.min);
-    setMaxPrice(f.maxPrice ?? L.price.max);
-    setMaxDistance(f.maxDistance ?? L.distance.max);
-    setAllergens(f.allergens);
-    setMilkTypes(f.milkTypes);
+  const loadFilters = (filters: Filters) => {
+    setSort(filters.sort);
+    setVegan(filters.vegan);
+    setVegetarian(filters.vegetarian);
+    setDairyFree(filters.dairyFree);
+    setGlutenFree(filters.glutenFree);
+    setMaxCalories(
+      filters.maxCalories ?? L.calories.max,
+    );
+    setMaxSugar(filters.maxSugar ?? L.sugar.max);
+    setMinPrice(filters.minPrice ?? L.price.min);
+    setMaxPrice(filters.maxPrice ?? L.price.max);
+    setMaxDistance(
+      filters.maxDistance ?? L.distance.max,
+    );
+    setAllergens(filters.allergens);
+    setMilkTypes(filters.milkTypes);
   };
 
-  const handleReset = () => loadFilters(DEFAULT_FILTERS);
+  const handleReset = () => {
+    loadFilters(DEFAULT_FILTERS);
+  };
 
-  // DONE
   const handleApply = () => {
-    const filters: Filters = {
+    const filters = supportedFilters({
       sort,
       vegan,
       vegetarian,
       dairyFree,
       glutenFree,
-      maxCalories: maxCalories >= L.calories.max ? null : maxCalories,
-      maxSugar: maxSugar >= L.sugar.max ? null : maxSugar,
-      minPrice: minPrice <= L.price.min ? null : minPrice,
-      maxPrice: maxPrice >= L.price.max ? null : maxPrice,
-      maxDistance: maxDistance >= L.distance.max ? null : maxDistance,
+      maxCalories:
+        maxCalories >= L.calories.max
+          ? null
+          : maxCalories,
+      maxSugar:
+        maxSugar >= L.sugar.max ? null : maxSugar,
+      minPrice:
+        minPrice <= L.price.min ? null : minPrice,
+      maxPrice:
+        maxPrice >= L.price.max ? null : maxPrice,
+      maxDistance:
+        maxDistance >= L.distance.max
+          ? null
+          : maxDistance,
       allergens,
       milkTypes,
-    };
+    });
 
     savedFilters.current = filters;
     setScreen("main");
     onApply(filters);
   };
 
-  // Android back button / swipe down: step back, or close without applying
   const handleRequestClose = () => {
     if (screen !== "main") {
       setScreen("main");
@@ -228,12 +336,21 @@ export default function FilterModal({
     thumbBorderColor: t.background,
   };
 
-  const dietCount = [vegan, vegetarian, dairyFree, glutenFree].filter(Boolean).length;
-  const priceActive = minPrice > L.price.min || maxPrice < L.price.max;
+  const dietCount = [
+    vegan,
+    vegetarian,
+    dairyFree,
+    glutenFree,
+  ].filter(Boolean).length;
+
+  const priceActive =
+    minPrice > L.price.min ||
+    maxPrice < L.price.max;
 
   const priceReadout = !priceActive
     ? "Any price"
-    : minPrice > L.price.min && maxPrice < L.price.max
+    : minPrice > L.price.min &&
+        maxPrice < L.price.max
       ? `$${minPrice}–$${maxPrice}`
       : minPrice > L.price.min
         ? `$${minPrice}+`
@@ -246,71 +363,141 @@ export default function FilterModal({
     slider: React.ReactNode,
   ) => (
     <View style={styles.sliderPad}>
-      <Text style={[styles.readout, { color: t.text }]}>{readout}</Text>
+      <Text
+        style={[styles.readout, { color: t.text }]}
+      >
+        {readout}
+      </Text>
+
       {slider}
+
       <View style={styles.ends}>
-        <Text style={[styles.endText, { color: t.subtext }]}>{endMin}</Text>
-        <Text style={[styles.endText, { color: t.subtext }]}>{endMax}</Text>
+        <Text
+          style={[
+            styles.endText,
+            { color: t.subtext },
+          ]}
+        >
+          {endMin}
+        </Text>
+
+        <Text
+          style={[
+            styles.endText,
+            { color: t.subtext },
+          ]}
+        >
+          {endMax}
+        </Text>
       </View>
     </View>
   );
 
   const renderMain = () => (
     <>
-      <View style={[styles.sectionHeader, { backgroundColor: t.band }]}>
-        <Text style={[styles.sectionTitle, { color: t.text }]}>Sort by</Text>
+      <View
+        style={[
+          styles.sectionHeader,
+          { backgroundColor: t.band },
+        ]}
+      >
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: t.text },
+          ]}
+        >
+          Sort by
+        </Text>
       </View>
 
       <NavRow
         label="Featured"
-        value={sort.length ? `${sort.length} selected` : undefined}
+        value={
+          sort.length
+            ? `${sort.length} selected`
+            : undefined
+        }
         onPress={() => setScreen("featured")}
       />
 
-      <View style={[styles.sectionHeader, { backgroundColor: t.band }]}>
-        <Text style={[styles.sectionTitle, { color: t.text }]}>Filter by</Text>
+      <View
+        style={[
+          styles.sectionHeader,
+          { backgroundColor: t.band },
+        ]}
+      >
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: t.text },
+          ]}
+        >
+          Filter by
+        </Text>
       </View>
 
       <NavRow
         label="Dietary needs"
-        value={dietCount ? `${dietCount} selected` : undefined}
-        onPress={() => setScreen("dietary")}
-      />
-      <NavRow
-        label="Calories"
-        value={maxCalories < L.calories.max ? `≤ ${maxCalories}` : undefined}
-        onPress={() => setScreen("calories")}
-      />
-      <NavRow
-        label="Sugar"
-        value={maxSugar < L.sugar.max ? `≤ ${maxSugar} g` : undefined}
-        onPress={() => setScreen("sugar")}
-      />
-      <NavRow
-        label="Allergens"
-        value={allergens.length ? `${allergens.length} avoided` : undefined}
-        onPress={() => setScreen("allergens")}
-      />
-      <NavRow
-        label="Milk"
-        value={milkTypes.length ? milkTypes.join(", ") : undefined}
-        onPress={() => setScreen("milk")}
-      />
-      <NavRow
-        label="Price range"
         value={
-          priceActive
-            ? priceLabel(
-                minPrice > L.price.min ? minPrice : null,
-                maxPrice < L.price.max ? maxPrice : null,
-              )
+          dietCount
+            ? `${dietCount} selected`
             : undefined
         }
+        onPress={() => setScreen("dietary")}
+      />
+
+      <NavRow
+        label="Calories"
+        value={
+          maxCalories < L.calories.max
+            ? `≤ ${maxCalories}`
+            : undefined
+        }
+        onPress={() => setScreen("calories")}
+      />
+
+      <NavRow
+        label="Sugar"
+        value={
+          maxSugar < L.sugar.max
+            ? `≤ ${maxSugar} g`
+            : undefined
+        }
+        onPress={() => setScreen("sugar")}
+      />
+
+      <NavRow
+        label="Allergens"
+        value={
+          allergens.length
+            ? `${allergens.length} avoided`
+            : undefined
+        }
+        onPress={() => setScreen("allergens")}
+      />
+
+      <NavRow
+        label="Milk"
+        value="Unavailable"
+        disabled
+        onPress={() => setScreen("milk")}
+      />
+
+      <NavRow
+        label="Price range"
+        value="Unavailable"
+        disabled
         onPress={() => setScreen("price")}
       />
+
       <NavRow
-        label="Distance"
-        value={maxDistance < L.distance.max ? `≤ ${maxDistance} mi` : undefined}
+        label="Distance from CSUN"
+        value={
+          maxDistance < L.distance.max
+            ? `≤ ${maxDistance} mi`
+            : undefined
+        }
         onPress={() => setScreen("distance")}
       />
     </>
@@ -331,20 +518,95 @@ export default function FilterModal({
       case "dietary":
         return (
           <>
-            <Checkbox label="Vegan" checked={vegan} onPress={() => setVegan(!vegan)} />
-            <Checkbox label="Vegetarian" checked={vegetarian} onPress={() => setVegetarian(!vegetarian)} />
-            <Checkbox label="Dairy-free" checked={dairyFree} onPress={() => setDairyFree(!dairyFree)} />
-            <Checkbox label="Gluten-free" checked={glutenFree} onPress={() => setGlutenFree(!glutenFree)} />
+            <Checkbox
+              label="Vegan"
+              checked={vegan}
+              onPress={() => setVegan(!vegan)}
+            />
+            <Checkbox
+              label="Vegetarian"
+              checked={vegetarian}
+              onPress={() =>
+                setVegetarian(!vegetarian)
+              }
+            />
+            <Checkbox
+              label="Dairy-free"
+              checked={dairyFree}
+              onPress={() => setDairyFree(!dairyFree)}
+            />
+            <Checkbox
+              label="Gluten-free"
+              checked={glutenFree}
+              onPress={() =>
+                setGlutenFree(!glutenFree)
+              }
+            />
           </>
         );
 
       case "allergens":
-        return ALLERGEN_OPTIONS.map((allergen) => (
+        if (allergenLoading) {
+          return (
+            <Text
+              style={[
+                styles.readout,
+                { color: t.text },
+              ]}
+            >
+              Loading allergens…
+            </Text>
+          );
+        }
+
+        if (allergenError) {
+          return (
+            <Pressable
+              onPress={() => {
+                setAllergenLoading(true);
+                setAllergenError(false);
+                setAllergenRetry(
+                  (value) => value + 1,
+                );
+              }}
+              accessibilityRole="button"
+            >
+              <Text
+                style={[
+                  styles.readout,
+                  { color: t.text },
+                ]}
+              >
+                Unable to load allergens. Tap to retry.
+              </Text>
+            </Pressable>
+          );
+        }
+
+        if (!allergenOptions.length) {
+          return (
+            <Text
+              style={[
+                styles.readout,
+                { color: t.text },
+              ]}
+            >
+              No allergen options available.
+            </Text>
+          );
+        }
+
+        return allergenOptions.map((allergen) => (
           <Checkbox
             key={allergen}
-            label={allergen}
+            label={
+              allergen.charAt(0).toUpperCase() +
+              allergen.slice(1)
+            }
             checked={allergens.includes(allergen)}
-            onPress={() => toggleAllergen(allergen)}
+            onPress={() =>
+              toggleAllergen(allergen)
+            }
           />
         ));
 
@@ -360,7 +622,9 @@ export default function FilterModal({
 
       case "calories":
         return renderSlider(
-          maxCalories >= L.calories.max ? "Any" : `Up to ${maxCalories} cal`,
+          maxCalories >= L.calories.max
+            ? "Any"
+            : `Up to ${maxCalories} cal`,
           "0",
           "600+",
           <RangeSlider
@@ -368,13 +632,17 @@ export default function FilterModal({
             {...L.calories}
             values={[maxCalories]}
             labels={["Maximum calories"]}
-            onChange={([v]) => setMaxCalories(v)}
+            onChange={([value]) =>
+              setMaxCalories(value)
+            }
           />,
         );
 
       case "sugar":
         return renderSlider(
-          maxSugar >= L.sugar.max ? "Any" : `Up to ${maxSugar} g`,
+          maxSugar >= L.sugar.max
+            ? "Any"
+            : `Up to ${maxSugar} g`,
           "0 g",
           "70+ g",
           <RangeSlider
@@ -382,7 +650,9 @@ export default function FilterModal({
             {...L.sugar}
             values={[maxSugar]}
             labels={["Maximum sugar"]}
-            onChange={([v]) => setMaxSugar(v)}
+            onChange={([value]) =>
+              setMaxSugar(value)
+            }
           />,
         );
 
@@ -395,17 +665,22 @@ export default function FilterModal({
             {...sliderColors}
             {...L.price}
             values={[minPrice, maxPrice]}
-            labels={["Minimum price", "Maximum price"]}
-            onChange={([lo, hi]) => {
-              setMinPrice(lo);
-              setMaxPrice(hi);
+            labels={[
+              "Minimum price",
+              "Maximum price",
+            ]}
+            onChange={([low, high]) => {
+              setMinPrice(low);
+              setMaxPrice(high);
             }}
           />,
         );
 
       case "distance":
         return renderSlider(
-          maxDistance >= L.distance.max ? "Any" : `Within ${maxDistance} mi`,
+          maxDistance >= L.distance.max
+            ? "Within 2 mi of CSUN"
+            : `Within ${maxDistance} mi`,
           "0.25 mi",
           "2 mi",
           <RangeSlider
@@ -413,7 +688,9 @@ export default function FilterModal({
             {...L.distance}
             values={[maxDistance]}
             labels={["Maximum distance"]}
-            onChange={([v]) => setMaxDistance(v)}
+            onChange={([value]) =>
+              setMaxDistance(value)
+            }
           />,
         );
 
@@ -429,14 +706,31 @@ export default function FilterModal({
       animationType="slide"
       onRequestClose={handleRequestClose}
     >
-      <View style={[styles.overlay, { backgroundColor: t.scrim }]}>
-        {/* A Modal is its own native view, so the sheet needs the same background token App.tsx uses */}
-        <View style={[styles.sheet, { backgroundColor: t.background }]}>
+      <View
+        style={[
+          styles.overlay,
+          { backgroundColor: t.scrim },
+        ]}
+      >
+        <View
+          style={[
+            styles.sheet,
+            { backgroundColor: t.background },
+          ]}
+        >
           <View style={styles.header}>
             <View style={styles.headerSide}>
               {screen === "main" ? (
-                <Pressable onPress={handleReset} hitSlop={10}>
-                  <Text style={[styles.resetText, { color: t.subtext }]}>
+                <Pressable
+                  onPress={handleReset}
+                  hitSlop={10}
+                >
+                  <Text
+                    style={[
+                      styles.resetText,
+                      { color: t.subtext },
+                    ]}
+                  >
                     Reset
                   </Text>
                 </Pressable>
@@ -446,27 +740,49 @@ export default function FilterModal({
                   hitSlop={10}
                   accessibilityLabel="Back"
                 >
-                  <Ionicons name="chevron-back" size={26} color={t.icon} />
+                  <Ionicons
+                    name="chevron-back"
+                    size={26}
+                    color={t.icon}
+                  />
                 </Pressable>
               )}
             </View>
 
-            <Text style={[styles.title, { color: t.text }]}>
+            <Text
+              style={[
+                styles.title,
+                { color: t.text },
+              ]}
+            >
               {TITLES[screen]}
             </Text>
 
             <Pressable
-              style={[styles.applyButton, { backgroundColor: t.button }]}
+              style={[
+                styles.applyButton,
+                { backgroundColor: t.button },
+              ]}
               onPress={handleApply}
             >
-              <Text style={[styles.applyText, { color: t.buttonText }]}>
+              <Text
+                style={[
+                  styles.applyText,
+                  { color: t.buttonText },
+                ]}
+              >
                 DONE
               </Text>
             </Pressable>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false}>
-            {screen === "main" ? renderMain() : renderSub()}
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+          >
+            {screen === "main"
+              ? renderMain()
+              : renderSub()}
+
             <View style={styles.bottomSpace} />
           </ScrollView>
         </View>
@@ -480,7 +796,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "flex-end",
   },
-
   sheet: {
     flex: 1,
     marginTop: 52,
@@ -488,7 +803,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     overflow: "hidden",
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -498,31 +812,25 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     minHeight: 68,
   },
-
   headerSide: {
     minWidth: 76,
   },
-
   title: {
     fontSize: 18,
     fontWeight: "700",
   },
-
   resetText: {
     fontSize: 15,
     fontWeight: "600",
   },
-
   sectionHeader: {
     paddingHorizontal: 20,
     paddingVertical: 14,
   },
-
   sectionTitle: {
     fontSize: 20,
     fontWeight: "700",
   },
-
   option: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -531,12 +839,10 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-
   optionText: {
     fontSize: 16,
     flexShrink: 1,
   },
-
   optionRight: {
     flexDirection: "row",
     alignItems: "center",
@@ -544,13 +850,11 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     marginLeft: 12,
   },
-
   optionValue: {
     fontSize: 14,
     flexShrink: 1,
     maxWidth: 150,
   },
-
   checkbox: {
     width: 24,
     height: 24,
@@ -559,33 +863,27 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   checkmark: {
     fontSize: 14,
     fontWeight: "bold",
   },
-
   sliderPad: {
     paddingHorizontal: 20,
     paddingTop: 8,
   },
-
   readout: {
     fontSize: 30,
     fontWeight: "700",
     paddingTop: 22,
     paddingBottom: 6,
   },
-
   ends: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
-
   endText: {
     fontSize: 13,
   },
-
   applyButton: {
     minWidth: 76,
     height: 40,
@@ -594,13 +892,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   applyText: {
     fontWeight: "700",
     fontSize: 13,
     letterSpacing: 0.6,
   },
-
   bottomSpace: {
     height: 48,
   },

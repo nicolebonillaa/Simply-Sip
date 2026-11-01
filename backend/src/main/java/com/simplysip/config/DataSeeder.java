@@ -17,8 +17,18 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 @Component
 public class DataSeeder implements CommandLineRunner {
+
+    private static final Map<String, String> ALLERGEN_RENAMES = Map.of(
+            "nuts", "Tree nuts",
+            "soy", "Soy",
+            "gluten", "Wheat"
+    );
 
     private final UserRepository userRepository;
     private final LocationRepository locationRepository;
@@ -50,19 +60,8 @@ public class DataSeeder implements CommandLineRunner {
         User cara = ensureUser("Cara Orange", "cara@csun.edu", "password123");
 
         if (drinkRepository.count() > 0) {
-            drinkRepository.findAll().forEach((drink) -> {
-                if (drink.getTags() == null || drink.getTags().isBlank()) {
-                    if ("Coffee".equalsIgnoreCase(drink.getCategory())) {
-                        drink.setTags("dairy");
-                    } else if ("Tea".equalsIgnoreCase(drink.getCategory())) {
-                        drink.setTags("dairy,gluten-free");
-                    } else if ("Smoothie".equalsIgnoreCase(drink.getCategory())) {
-                        drink.setTags("vegan,dairy-free,gluten-free");
-                    }
-                    drinkRepository.save(drink);
-                }
-            });
-            seedAllergensIfEmpty();
+            drinkRepository.findAll().forEach(this::backfillDrinkFields);
+            alignAllergens();
             return;
         }
 
@@ -70,44 +69,134 @@ public class DataSeeder implements CommandLineRunner {
         Location starbucks = location("Starbucks - Reseda", "9301 Reseda Blvd, Northridge, CA 91324", 34.2405, -118.5360);
         Location juiceIt = location("Juice It Up!", "9301 Tampa Ave, Northridge, CA 91324", 34.2388, -118.5535);
 
-        Drink icedLatte = drink("Iced Latte", "Coffee", "dairy", matador, 120, 10.0, 150.0);
-        Drink matcha = drink("Matcha Green Tea Latte", "Tea", "dairy,gluten-free", starbucks, 240, 32.0, 80.0);
-        Drink smoothie = drink("Berry Blast Smoothie", "Smoothie", "vegan,dairy-free,gluten-free", juiceIt, 290, 45.0, 0.0);
+        Drink icedLatte = drink(
+                "Iced Latte", "Coffee", "dairy", 4.5, "Whole,Oat", matador, 120, 10.0, 150.0);
+        Drink matcha = drink(
+                "Matcha Green Tea Latte", "Tea", "dairy,gluten-free", 5.25, "Oat,Almond", starbucks, 240, 32.0, 80.0);
+        Drink smoothie = drink(
+                "Berry Blast Smoothie", "Smoothie", "vegan,dairy-free,gluten-free", 6.5, "Almond,Coconut", juiceIt, 290, 45.0, 0.0);
 
         favorite(alice, icedLatte);
         favorite(bob, matcha);
         favorite(cara, smoothie);
-        seedAllergensIfEmpty();
+        alignAllergens();
     }
 
-    private void seedAllergensIfEmpty() {
-        if (allergenRepository.count() > 0) {
-            return;
+    private void backfillDrinkFields(Drink drink) {
+        boolean changed = false;
+        if (drink.getTags() == null || drink.getTags().isBlank()) {
+            if ("Coffee".equalsIgnoreCase(drink.getCategory())) {
+                drink.setTags("dairy");
+            } else if ("Tea".equalsIgnoreCase(drink.getCategory())) {
+                drink.setTags("dairy,gluten-free");
+            } else if ("Smoothie".equalsIgnoreCase(drink.getCategory())) {
+                drink.setTags("vegan,dairy-free,gluten-free");
+            }
+            changed = true;
         }
-        Allergen dairy = allergen("dairy");
-        Allergen nuts = allergen("nuts");
-        Allergen soy = allergen("soy");
-        allergen("gluten");
-
-        linkAllergen("Iced Latte", dairy);
-        linkAllergen("Cold Brew", dairy);
-        linkAllergen("Matcha Green Tea Latte", dairy);
-        linkAllergen("Matcha Green Tea Latte", soy);
-        linkAllergen("Berry Blast Smoothie", nuts);
+        if (drink.getPrice() == null) {
+            if ("Iced Latte".equalsIgnoreCase(drink.getName())) {
+                drink.setPrice(4.5);
+            } else if ("Cold Brew".equalsIgnoreCase(drink.getName())) {
+                drink.setPrice(3.75);
+            } else if ("Matcha Green Tea Latte".equalsIgnoreCase(drink.getName())) {
+                drink.setPrice(5.25);
+            } else if ("Berry Blast Smoothie".equalsIgnoreCase(drink.getName())) {
+                drink.setPrice(6.5);
+            } else {
+                drink.setPrice(4.0);
+            }
+            changed = true;
+        }
+        if (drink.getMilkTypes() == null || drink.getMilkTypes().isBlank()) {
+            if ("Iced Latte".equalsIgnoreCase(drink.getName())) {
+                drink.setMilkTypes("Whole,Oat");
+            } else if ("Cold Brew".equalsIgnoreCase(drink.getName())) {
+                drink.setMilkTypes("Oat");
+            } else if ("Matcha Green Tea Latte".equalsIgnoreCase(drink.getName())) {
+                drink.setMilkTypes("Oat,Almond");
+            } else if ("Berry Blast Smoothie".equalsIgnoreCase(drink.getName())) {
+                drink.setMilkTypes("Almond,Coconut");
+            } else {
+                drink.setMilkTypes("Oat");
+            }
+            changed = true;
+        }
+        if (changed) {
+            drinkRepository.save(drink);
+        }
     }
 
-    private Allergen allergen(String name) {
-        Allergen allergen = new Allergen();
-        allergen.setName(name);
-        return allergenRepository.save(allergen);
+    private void alignAllergens() {
+        for (Map.Entry<String, String> entry : ALLERGEN_RENAMES.entrySet()) {
+            allergenRepository.findByNameIgnoreCase(entry.getKey()).ifPresent(existing -> {
+                if (allergenRepository.findByNameIgnoreCase(entry.getValue()).isPresent()
+                        && !existing.getName().equalsIgnoreCase(entry.getValue())) {
+                    reassignLinks(existing, ensureAllergen(entry.getValue()));
+                    allergenRepository.delete(existing);
+                } else {
+                    existing.setName(entry.getValue());
+                    allergenRepository.save(existing);
+                }
+            });
+        }
+
+        allergenRepository.findByNameIgnoreCase("dairy").ifPresent(dairy -> {
+            drinkRepository.findAll().forEach(drink -> {
+                if (drink.getAllergens().removeIf(a -> a.getId().equals(dairy.getId()))) {
+                    drinkRepository.save(drink);
+                }
+            });
+            allergenRepository.delete(dairy);
+        });
+
+        ensureAllergen("Peanuts");
+        Allergen treeNuts = ensureAllergen("Tree nuts");
+        Allergen soy = ensureAllergen("Soy");
+        ensureAllergen("Eggs");
+        ensureAllergen("Wheat");
+
+        clearAndLink("Matcha Green Tea Latte", soy);
+        clearAndLink("Berry Blast Smoothie", treeNuts);
+        clearDrinkAllergens("Iced Latte");
+        clearDrinkAllergens("Cold Brew");
     }
 
-    private void linkAllergen(String drinkName, Allergen allergen) {
+    private void reassignLinks(Allergen from, Allergen to) {
+        drinkRepository.findAll().forEach(drink -> {
+            if (drink.getAllergens().removeIf(a -> a.getId().equals(from.getId()))) {
+                drink.getAllergens().add(to);
+                drinkRepository.save(drink);
+            }
+        });
+    }
+
+    private Allergen ensureAllergen(String name) {
+        return allergenRepository.findByNameIgnoreCase(name).orElseGet(() -> {
+            Allergen allergen = new Allergen();
+            allergen.setName(name);
+            return allergenRepository.save(allergen);
+        });
+    }
+
+    private void clearAndLink(String drinkName, Allergen allergen) {
         drinkRepository.findAll().stream()
                 .filter(drink -> drinkName.equalsIgnoreCase(drink.getName()))
                 .findFirst()
                 .ifPresent(drink -> {
-                    drink.getAllergens().add(allergen);
+                    Set<Allergen> next = new HashSet<>();
+                    next.add(allergen);
+                    drink.setAllergens(next);
+                    drinkRepository.save(drink);
+                });
+    }
+
+    private void clearDrinkAllergens(String drinkName) {
+        drinkRepository.findAll().stream()
+                .filter(drink -> drinkName.equalsIgnoreCase(drink.getName()))
+                .findFirst()
+                .ifPresent(drink -> {
+                    drink.getAllergens().clear();
                     drinkRepository.save(drink);
                 });
     }
@@ -139,6 +228,8 @@ public class DataSeeder implements CommandLineRunner {
             String name,
             String category,
             String tags,
+            double price,
+            String milkTypes,
             Location location,
             int calories,
             double sugar,
@@ -147,6 +238,8 @@ public class DataSeeder implements CommandLineRunner {
         drink.setName(name);
         drink.setCategory(category);
         drink.setTags(tags);
+        drink.setPrice(price);
+        drink.setMilkTypes(milkTypes);
         drink.setLocation(location);
         NutritionFacts facts = new NutritionFacts();
         facts.setCalories(calories);

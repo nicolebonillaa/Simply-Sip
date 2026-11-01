@@ -2,8 +2,7 @@ package com.simplysip.controller;
 
 import com.simplysip.dto.CreateDrinkRequest;
 import com.simplysip.dto.CreateNutritionFactsRequest;
-import com.simplysip.exception.NotFoundException;
-import com.simplysip.model.Drink;
+import com.simplysip.dto.DrinkResponse;
 import com.simplysip.model.NutritionFacts;
 import com.simplysip.service.DrinkService;
 import jakarta.validation.Valid;
@@ -13,7 +12,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/drinks")
@@ -26,34 +24,49 @@ public class DrinkController {
     }
 
     /**
-     * Lists drinks. Nutrition and allergen filters are optional and can be combined.
+     * Lists drinks as DrinkResponse. Filters are optional and combinable.
      */
     @GetMapping
-    public List<Drink> getAll(
+    public List<DrinkResponse> getAll(
             @RequestParam(required = false) String category,
             @RequestParam(required = false) Long locationId,
             @RequestParam(required = false) String q,
             @RequestParam(required = false) Integer maxCalories,
             @RequestParam(required = false) Double maxSugar,
             @RequestParam(required = false) Double maxCaffeine,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) String tag,
-            @RequestParam(required = false) String excludeAllergens) {
+            @RequestParam(required = false) String excludeAllergens,
+            @RequestParam(required = false) String milkTypes) {
         if (category == null && locationId == null && q == null
                 && maxCalories == null && maxSugar == null && maxCaffeine == null
-                && tag == null && (excludeAllergens == null || excludeAllergens.isBlank())) {
-            return drinkService.findAll();
+                && minPrice == null && maxPrice == null
+                && tag == null
+                && (excludeAllergens == null || excludeAllergens.isBlank())
+                && (milkTypes == null || milkTypes.isBlank())) {
+            return drinkService.findAllResponses();
         }
-        return drinkService.search(
-                category, locationId, q, maxCalories, maxSugar, maxCaffeine, tag, excludeAllergens);
+        return drinkService.searchResponses(
+                category,
+                locationId,
+                q,
+                maxCalories,
+                maxSugar,
+                maxCaffeine,
+                minPrice,
+                maxPrice,
+                tag,
+                excludeAllergens,
+                milkTypes);
     }
 
     /**
-     * Returns one drink, including its allergens. A missing id is a JSON 404.
+     * Returns one drink as DrinkResponse. A missing id is a JSON 404.
      */
     @GetMapping("/{id}")
-    public Drink getById(@PathVariable Long id) {
-        return drinkService.findById(id)
-                .orElseThrow(() -> new NotFoundException("Drink not found: " + id));
+    public DrinkResponse getById(@PathVariable Long id) {
+        return drinkService.getResponseById(id);
     }
 
     /**
@@ -68,8 +81,9 @@ public class DrinkController {
      * Creates a drink at an existing location. Returns 404 when locationId is unknown.
      */
     @PostMapping
-    public ResponseEntity<Drink> create(@Valid @RequestBody CreateDrinkRequest request) {
-        Drink created = drinkService.create(request.getName(), request.getCategory(), request.getLocationId());
+    public ResponseEntity<DrinkResponse> create(@Valid @RequestBody CreateDrinkRequest request) {
+        DrinkResponse created = drinkService.createResponse(
+                request.getName(), request.getCategory(), request.getLocationId());
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.getId())
@@ -90,20 +104,19 @@ public class DrinkController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Long id, @Valid @RequestBody Drink drink) {
-        try {
-            return drinkService.update(id, drink)
-                    .<ResponseEntity<?>>map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-        } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
-        }
+    public ResponseEntity<DrinkResponse> update(
+            @PathVariable Long id,
+            @Valid @RequestBody com.simplysip.model.Drink drink) {
+        return drinkService.update(id, drink)
+                .map(DrinkResponse::new)
+                .map(ResponseEntity::ok)
+                .orElseThrow(() -> new com.simplysip.exception.NotFoundException("Drink not found: " + id));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!drinkService.delete(id)) {
-            return ResponseEntity.notFound().build();
+            throw new com.simplysip.exception.NotFoundException("Drink not found: " + id);
         }
         return ResponseEntity.noContent().build();
     }
