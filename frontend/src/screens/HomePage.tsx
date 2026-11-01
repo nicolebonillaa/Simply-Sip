@@ -109,19 +109,20 @@ export default function HomePage() {
         <FlatList
           data={drinks}
           renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.imagePlaceholder} />
-
-              <Text style={styles.name}>{item.name}</Text>
-
-              <Text style={styles.place}>{item.place}</Text>
+                                     <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
+         <View style={styles.card}>
+            <View style={styles.imagePlaceholder} />
+            <Text style={styles.name}>{item.name}</Text>
+            <Text style={styles.place}>{item.place}</Text>
             </View>
-          )}
+         </Pressable>
+         )}
+        
           keyExtractor={(item) => String(item.id)}
           horizontal
           showsHorizontalScrollIndicator={false}
         />
-
+                                     
         <Text style={styles.popStoresTitle}>
           Popular Stores in Your Area
         </Text>

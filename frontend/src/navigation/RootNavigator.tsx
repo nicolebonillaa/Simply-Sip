@@ -2,6 +2,7 @@ import React from "react";
 import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabs from "./MainTabs";
+import DrinkDetails from "../screens/DrinkDetails";
 
 const RootStack = createNativeStackNavigator();
 
@@ -18,6 +19,7 @@ export default function RootNavigator() {
     <NavigationContainer theme={AppTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainTabs" component={MainTabs} />
+          <RootStack.Screen name="DrinkDetails" component={DrinkDetails} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
