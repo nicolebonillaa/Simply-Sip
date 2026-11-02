@@ -8,6 +8,11 @@ export const getDrinks = async (
   return response.data;
 };
 
+export const getDrinkById = async (id: number): Promise<Drink> => {
+  const response = await api.get<Drink>(`/api/drinks/${id}`);
+  return response.data;
+};
+
 export const getAllergens = async (): Promise<Allergen[]> => {
   const response = await api.get<Allergen[]>("/api/allergens");
   return response.data;
