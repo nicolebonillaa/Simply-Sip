@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Animated, Platform, Pressable, StyleSheet, View } from "react-native";
 import {
   createBottomTabNavigator,
@@ -34,7 +34,7 @@ function GlassTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [barWidth, setBarWidth] = useState(0);
   const tabWidth = barWidth > 0 ? (barWidth - PAD * 2) / state.routes.length : 0;
-  const slide = useRef(new Animated.Value(0)).current;
+  const [slide] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.spring(slide, {
