@@ -371,30 +371,27 @@ function SearchResultsContent({
                 </Pressable>
               </View>
 
-              <Text style={styles.name}>
-                {item.name}
-              </Text>
-
-              <Text style={styles.meta}>
-                {item.location?.name ??
-                  "Café unavailable"}
-              </Text>
-
-              <Text style={styles.meta}>
-                {[
-                  item.category,
-                  distance !== null
-                    ? `${distance.toFixed(2)} mi from CSUN`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
-
-              <Text style={styles.meta}>
-                {nutritionText ||
-                  "Nutrition information unavailable"}
-              </Text>
+              <Pressable
+                onPress={() => navigation.navigate("DrinkDetails", { drinkId: item.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${item.name} details`}
+              >
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.meta}>
+                  {item.location?.name ?? "Café unavailable"}
+                </Text>
+                <Text style={styles.meta}>
+                  {[
+                    item.category,
+                    distance !== null
+                      ? `${distance.toFixed(2)} mi from CSUN`
+                      : null,
+                  ].filter(Boolean).join(" · ")}
+                </Text>
+                <Text style={styles.meta}>
+                  {nutritionText || "Nutrition information unavailable"}
+                </Text>
+              </Pressable>
             </View>
           );
         }}

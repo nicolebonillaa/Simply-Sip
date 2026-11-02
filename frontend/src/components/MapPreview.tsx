@@ -10,11 +10,20 @@ type Props = {
 };
 
 export default function MapPreview({ spots, onPress }: Props) {
+  const region = spots.length === 1
+    ? {
+        latitude: spots[0].latitude,
+        longitude: spots[0].longitude,
+        latitudeDelta: 0.012,
+        longitudeDelta: 0.012,
+      }
+    : CSUN_REGION;
+
   return (
     <View style={styles.container}>
       <MapView
         style={styles.map}
-        initialRegion={CSUN_REGION}
+        initialRegion={region}
         scrollEnabled={false}
         zoomEnabled={false}
         rotateEnabled={false}

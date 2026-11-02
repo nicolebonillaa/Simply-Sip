@@ -17,7 +17,7 @@ import { getLocations } from "../services/locations";
 import { CSUN_REGION, getNearbySpots } from "../data/mapData";
 import type { MapSpot } from "../data/mapData";
 
-type PermissionState = "checking" | "granted" | "denied" | "unavailable";
+type PermissionState = "checking" | "granted" | "denied" | "unavailable" | "skipped";
 
 function CloseButton() {
   const navigation = useNavigation<any>();
@@ -39,10 +39,11 @@ function CloseButton() {
 
 export default function MapScreen() {
   const route = useRoute<any>();
+  const focusOnSpot = route.params?.focusOnSpot === true;
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const [permission, setPermission] =
-    useState<PermissionState>("checking");
+    useState<PermissionState>(focusOnSpot ? "skipped" : "checking");
   const [canAskAgain, setCanAskAgain] = useState(true);
   const [locationUnavailable, setLocationUnavailable] = useState(false);
   // Search Results passes its applied pins; a direct visit loads locations from the API.
@@ -54,6 +55,14 @@ export default function MapScreen() {
   const [spotsError, setSpotsError] = useState(false);
   const [retry, setRetry] = useState(0);
   const nearbySpots = passedSpots ?? apiSpots;
+  const initialRegion = focusOnSpot && nearbySpots.length === 1
+    ? {
+        latitude: nearbySpots[0].latitude,
+        longitude: nearbySpots[0].longitude,
+        latitudeDelta: 0.012,
+        longitudeDelta: 0.012,
+      }
+    : CSUN_REGION;
 
   useEffect(() => {
     if (passedSpots !== undefined) return;
@@ -128,11 +137,11 @@ export default function MapScreen() {
   };
 
   useEffect(() => {
-    void Promise.resolve().then(requestLocation);
-  }, []);
+    if (!focusOnSpot) void Promise.resolve().then(requestLocation);
+  }, [focusOnSpot]);
 
   const showNotice =
-    permission !== "granted" ||
+    (permission !== "granted" && permission !== "skipped") ||
     locationUnavailable ||
     spotsLoading ||
     spotsError ||
@@ -143,7 +152,7 @@ export default function MapScreen() {
       <MapView
         ref={mapRef}
         style={styles.map}
-        initialRegion={CSUN_REGION}
+        initialRegion={initialRegion}
         showsUserLocation={permission === "granted"}
         showsMyLocationButton={permission === "granted"}
       >
