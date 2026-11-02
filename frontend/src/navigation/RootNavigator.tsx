@@ -3,6 +3,9 @@ import { DefaultTheme, NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import MainTabs from "./MainTabs";
 import DrinkDetails from "../screens/DrinkDetails";
+import RegisterPage from "../screens/RegisterPage";
+import LoginPage from "../screens/LoginPage";
+import SettingsPage from "../screens/SettingsPage";
 
 const RootStack = createNativeStackNavigator();
 
@@ -19,10 +22,11 @@ export default function RootNavigator() {
     <NavigationContainer theme={AppTheme}>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         <RootStack.Screen name="MainTabs" component={MainTabs} />
-          <RootStack.Screen name="DrinkDetails" component={DrinkDetails} />
+        <RootStack.Screen name="DrinkDetails" component={DrinkDetails} />
+        <RootStack.Screen name="Register" component={RegisterPage} />
+        <RootStack.Screen name="Login" component={LoginPage} />
+        <RootStack.Screen name="Settings" component={SettingsPage} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
 }
-
-
