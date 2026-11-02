@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Button,
@@ -13,14 +13,11 @@ import MapView from "react-native-maps";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import DrinkMarker from "../components/DrinkMarker";
-import {
-  CSUN_REGION,
-  getNearbySpots,
-  MOCK_SPOTS,
-  MapSpot,
-} from "../data/mapData";
+import { getLocations } from "../services/locations";
+import { CSUN_REGION, getNearbySpots } from "../data/mapData";
+import type { MapSpot } from "../data/mapData";
 
-type PermissionState = "checking" | "granted" | "denied";
+type PermissionState = "checking" | "granted" | "denied" | "unavailable";
 
 function CloseButton() {
   const navigation = useNavigation<any>();
@@ -41,98 +38,158 @@ function CloseButton() {
 }
 
 export default function MapScreen() {
+  const route = useRoute<any>();
+  const insets = useSafeAreaInsets();
+  const mapRef = useRef<MapView>(null);
   const [permission, setPermission] =
     useState<PermissionState>("checking");
-
   const [canAskAgain, setCanAskAgain] = useState(true);
-  const [region, setRegion] = useState(CSUN_REGION);
+  const [locationUnavailable, setLocationUnavailable] = useState(false);
+  // Search Results passes its applied pins; a direct visit loads locations from the API.
+  const passedSpots: MapSpot[] | undefined = Array.isArray(route.params?.spots)
+    ? route.params.spots
+    : undefined;
+  const [apiSpots, setApiSpots] = useState<MapSpot[]>([]);
+  const [spotsLoading, setSpotsLoading] = useState(passedSpots === undefined);
+  const [spotsError, setSpotsError] = useState(false);
+  const [retry, setRetry] = useState(0);
+  const nearbySpots = passedSpots ?? apiSpots;
 
-  const route = useRoute<any>();
+  useEffect(() => {
+    if (passedSpots !== undefined) return;
 
-  const passedSpots = route.params?.spots;
+    let active = true;
+    void getLocations()
+      .then((locations) => {
+        if (!active) return;
+        const spots: MapSpot[] = locations.map((location) => ({
+          id: location.id,
+          name: location.name,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }));
+        setApiSpots(getNearbySpots(spots));
+      })
+      .catch(() => {
+        if (active) setSpotsError(true);
+      })
+      .finally(() => {
+        if (active) setSpotsLoading(false);
+      });
 
-  const nearbySpots: MapSpot[] = Array.isArray(passedSpots)
-    ? passedSpots
-    : getNearbySpots(MOCK_SPOTS);
+    return () => {
+      active = false;
+    };
+  }, [passedSpots, retry]);
 
   const requestLocation = async () => {
-    setPermission("checking");
+    try {
+      const result = await Location.requestForegroundPermissionsAsync();
+      setCanAskAgain(result.canAskAgain);
 
-    const result = await Location.requestForegroundPermissionsAsync();
+      if (result.status !== "granted") {
+        setPermission("denied");
+        return;
+      }
 
-    setCanAskAgain(result.canAskAgain);
-
-    if (result.status !== "granted") {
-      setPermission("denied");
-      return;
+      setPermission("granted");
+      try {
+        const currentLocation = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        mapRef.current?.animateToRegion(
+          {
+            latitude: currentLocation.coords.latitude,
+            longitude: currentLocation.coords.longitude,
+            latitudeDelta: CSUN_REGION.latitudeDelta,
+            longitudeDelta: CSUN_REGION.longitudeDelta,
+          },
+          500,
+        );
+      } catch {
+        setLocationUnavailable(true);
+      }
+    } catch {
+      setPermission("unavailable");
     }
+  };
 
-    setPermission("granted");
+  const retryLocation = () => {
+    setPermission("checking");
+    setLocationUnavailable(false);
+    void requestLocation();
+  };
 
-    const currentLocation = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-
-    setRegion({
-      latitude: currentLocation.coords.latitude,
-      longitude: currentLocation.coords.longitude,
-      latitudeDelta: 0.02,
-      longitudeDelta: 0.02,
-    });
+  const retrySpots = () => {
+    setSpotsLoading(true);
+    setSpotsError(false);
+    setApiSpots([]);
+    setRetry((value) => value + 1);
   };
 
   useEffect(() => {
-    void requestLocation();
+    void Promise.resolve().then(requestLocation);
   }, []);
 
-  if (permission === "checking") {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" />
-          <Text>Requesting location permission...</Text>
-        </View>
-        <CloseButton />
-      </View>
-    );
-  }
-
-  if (permission === "denied") {
-    return (
-      <View style={styles.screen}>
-        <View style={styles.center}>
-          <Text style={styles.message}>
-            Location permission is needed to center the map on you.
-          </Text>
-
-          {canAskAgain ? (
-            <Button title="Try Again" onPress={requestLocation} />
-          ) : (
-            <Button
-              title="Open Settings"
-              onPress={() => {
-                void Linking.openSettings();
-              }}
-            />
-          )}
-        </View>
-        <CloseButton />
-      </View>
-    );
-  }
+  const showNotice =
+    permission !== "granted" ||
+    locationUnavailable ||
+    spotsLoading ||
+    spotsError ||
+    nearbySpots.length === 0;
 
   return (
     <View style={styles.screen}>
       <MapView
+        ref={mapRef}
         style={styles.map}
-        region={region}
-        showsUserLocation
-        showsMyLocationButton
+        initialRegion={CSUN_REGION}
+        showsUserLocation={permission === "granted"}
+        showsMyLocationButton={permission === "granted"}
       >
         {nearbySpots.map((spot) => (
           <DrinkMarker key={spot.id} spot={spot} />
         ))}
       </MapView>
+
+      {showNotice && (
+        <View style={[styles.notice, { top: insets.top + 64 }]}>
+          {permission === "checking" && (
+            <ActivityIndicator accessibilityLabel="Checking location permission" />
+          )}
+          {permission === "denied" && (
+            <>
+              <Text style={styles.message}>Location denied. Map centered on CSUN.</Text>
+              <Button
+                title={canAskAgain ? "Try Again" : "Open Settings"}
+                onPress={canAskAgain ? retryLocation : () => { void Linking.openSettings(); }}
+              />
+            </>
+          )}
+          {permission === "unavailable" && (
+            <>
+              <Text style={styles.message}>Location unavailable. Map centered on CSUN.</Text>
+              <Button title="Try Again" onPress={retryLocation} />
+            </>
+          )}
+          {permission === "granted" && locationUnavailable && (
+            <>
+              <Text style={styles.message}>Could not find your position. Map centered on CSUN.</Text>
+              <Button title="Try Again" onPress={retryLocation} />
+            </>
+          )}
+          {spotsLoading && <ActivityIndicator accessibilityLabel="Loading café locations" />}
+          {spotsError && (
+            <>
+              <Text style={styles.message}>Could not load café locations.</Text>
+              <Button title="Retry locations" onPress={retrySpots} />
+            </>
+          )}
+          {!spotsLoading && !spotsError && nearbySpots.length === 0 && (
+            <Text style={styles.message}>No nearby cafés match these results.</Text>
+          )}
+        </View>
+      )}
       <CloseButton />
     </View>
   );
@@ -145,15 +202,17 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
+  notice: {
+    position: "absolute",
+    left: 16,
+    right: 72,
+    alignItems: "flex-start",
+    padding: 10,
+    borderRadius: 10,
+    backgroundColor: "white",
   },
   message: {
-    textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 4,
   },
   closeButton: {
     position: "absolute",

@@ -186,28 +186,19 @@ export default function HomePage() {
             ) : null
           }
           renderItem={({ item }) => (
-                                     <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
-         <View style={styles.card}>
-            <View style={styles.imagePlaceholder} />
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.place}>{item.place}</Text>
             <View style={styles.card}>
               <View style={styles.imagePlaceholder} />
-
               <Text style={styles.name}>{item.name}</Text>
-
               <Text style={styles.place}>
-                {item.location?.name ?? item.place ?? "Café unavailable"}
+                {item.location?.name ?? "Café unavailable"}
               </Text>
             </View>
-         </Pressable>
-         )}
-        
+          )}
           keyExtractor={(item) => String(item.id)}
           horizontal
           showsHorizontalScrollIndicator={false}
         />
-                                     
+
         <Text style={styles.popStoresTitle}>
           Explore Cafés
         </Text>
