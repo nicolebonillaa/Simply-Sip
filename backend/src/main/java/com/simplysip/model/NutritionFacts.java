@@ -18,13 +18,30 @@ public class NutritionFacts {
     private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "drink_id", unique = true)
+    @JoinColumn(name = "drink_size_id", unique = true)
     @JsonIgnore
-    private Drink drink;
+    private DrinkSize drinkSize;
 
     private Integer calories;
 
-    private Double sugar;
+    @Column(name = "total_fat_g")
+    private Double totalFatG;
 
-    private Double caffeine;
+    @Column(name = "cholesterol_mg")
+    private Double cholesterolMg;
+
+    @Column(name = "sodium_mg")
+    private Double sodiumMg;
+
+    @Column(name = "carbs_g")
+    private Double carbsG;
+
+    @Column(name = "sugars_g")
+    private Double sugarsG;
+
+    @Column(name = "protein_g")
+    private Double proteinG;
+
+    @Column(name = "caffeine_mg")
+    private Double caffeineMg;
 }

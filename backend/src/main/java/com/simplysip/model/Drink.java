@@ -16,7 +16,13 @@ import java.util.List;
 import java.util.Set;
 
 @Entity
-@Table(name = "drinks")
+@Table(
+        name = "drinks",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_drinks_location_name",
+                columnNames = {"location_id", "name"}
+        )
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -26,24 +32,28 @@ public class Drink {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String name;
 
     private String category;
 
-    private String tags;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
-    private Double price;
+    @Column(name = "source_url")
+    private String sourceUrl;
 
-    @Column(name = "milk_types")
-    private String milkTypes;
+    @Column(name = "allergens_known", nullable = false)
+    private boolean allergensKnown = false;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "location_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private Location location;
 
-    @OneToOne(mappedBy = "drink", cascade = CascadeType.ALL, orphanRemoval = true)
-    private NutritionFacts nutritionFacts;
+    @OneToMany(mappedBy = "drink", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @JsonIgnoreProperties({"drink", "hibernateLazyInitializer", "handler"})
+    private List<DrinkSize> sizes = new ArrayList<>();
 
     @OneToMany(mappedBy = "drink", cascade = CascadeType.REMOVE, orphanRemoval = true)
     @JsonIgnore
@@ -65,14 +75,8 @@ public class Drink {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public void setNutritionFacts(NutritionFacts nutritionFacts) {
-        if (nutritionFacts == null) {
-            if (this.nutritionFacts != null) {
-                this.nutritionFacts.setDrink(null);
-            }
-        } else {
-            nutritionFacts.setDrink(this);
-        }
-        this.nutritionFacts = nutritionFacts;
+    public void addSize(DrinkSize size) {
+        sizes.add(size);
+        size.setDrink(this);
     }
 }

@@ -10,7 +10,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "locations")
+@Table(
+        name = "locations",
+        uniqueConstraints = @UniqueConstraint(name = "uk_locations_cafe_name", columnNames = "cafe_name")
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -20,9 +23,20 @@ public class Location {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;
+    @Column(name = "cafe_name", nullable = false)
+    private String cafeName;
 
-    private String address;
+    @Column(name = "location_name")
+    private String locationName;
+
+    @Column(name = "street_address")
+    private String streetAddress;
+
+    private String city;
+
+    private String state;
+
+    private String zip;
 
     private Double latitude;
 

@@ -1,0 +1,5 @@
+cafe,category,drink,size,ounces,price_usd,calories,total_fat_g,cholesterol_mg,sodium_mg,carbs_g,sugars_g,protein_g,caffeine_mg,allergens,description,url
+Qwench Juice Bar,Juice,green machine,16 oz,16,7.50,180,1,0,40,40,32,4,0,none,Kale apple ginger juice.,https://example.com/qwench/green-machine
+Qwench Juice Bar,Smoothie,pb&h protein,20 oz,20,8.25,420,14,10,180,48,30,22,0,peanuts;tree nuts,Peanut butter banana protein smoothie.,https://example.com/qwench/pbh
+Qwench Juice Bar,Juice,OJ sunrise,16 oz,16,6.50,160,0,0,10,38,34,2,0,,Fresh orange juice blend.,https://example.com/qwench/oj
+Qwench Juice Bar,Bowl,acai bowl,Regular,N/A,9.00,390,8,0,55,72,40,6,0,tree nuts,Acai bowl with granola.,https://example.com/qwench/acai

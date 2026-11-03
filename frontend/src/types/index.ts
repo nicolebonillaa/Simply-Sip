@@ -7,30 +7,20 @@ export interface Drink {
   id: number;
   name: string;
   category: string;
-<<<<<<< HEAD
-  tags: string;
+  tags: string | null;
   price?: number | null;
   milkTypes?: string[];
   allergens?: string[];
-  location: Location;
-  nutritionFacts: NutritionFacts;
-=======
-  tags: string | null;
   location: Location | null;
   nutritionFacts: NutritionFacts | null;
-  allergens?: Allergen[] | null;
->>>>>>> origin/main
   createdAt: string;
   updatedAt: string;
 }
 
 export interface DrinkParams {
   q?: string;
-  maxCaffeine?: number;
-  excludeAllergens?: string;
   category?: string;
   locationId?: number;
-  q?: string;
   maxCalories?: number;
   maxSugar?: number;
   maxCaffeine?: number;
