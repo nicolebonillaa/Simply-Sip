@@ -16,27 +16,6 @@ export const CSUN_REGION = { // Initial region for the map centered around CSUN
   longitudeDelta: 0.02,
 };
 
-export const MOCK_SPOTS: MapSpot[] = [ // Mock data for drink spots 
-  {
-    id: 1,
-    name: "Matador Bookstore Cafe",
-    latitude: 34.241,
-    longitude: -118.529,
-  },
-  {
-    id: 2,
-    name: "Starbucks - Reseda",
-    latitude: 34.2405,
-    longitude: -118.536,
-  },
-  {
-    id: 3,
-    name: "Juice It Up!",
-    latitude: 34.2388,
-    longitude: -118.5535,
-  },
-];
-
 export function distanceInMiles( //Two mile radius function to find nearby drink spots
   first: { latitude: number; longitude: number },
   second: { latitude: number; longitude: number },
@@ -67,5 +46,10 @@ export function distanceInMiles( //Two mile radius function to find nearby drink
 }
 
 export function getNearbySpots(spots: MapSpot[]) {
-  return spots.filter((spot) => distanceInMiles(CSUN, spot) <= 2);
+  return spots.filter(
+    (spot) =>
+      Number.isFinite(spot.latitude) &&
+      Number.isFinite(spot.longitude) &&
+      distanceInMiles(CSUN, spot) <= 2,
+  );
 }

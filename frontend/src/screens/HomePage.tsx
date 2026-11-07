@@ -186,15 +186,18 @@ export default function HomePage() {
             ) : null
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Pressable
+              style={styles.card}
+              onPress={() => navigation.navigate("DrinkDetails", { drinkId: item.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${item.name} details`}
+            >
               <View style={styles.imagePlaceholder} />
-
               <Text style={styles.name}>{item.name}</Text>
-
               <Text style={styles.place}>
                 {item.location?.name ?? "Café unavailable"}
               </Text>
-            </View>
+            </Pressable>
           )}
           keyExtractor={(item) => String(item.id)}
           horizontal
@@ -215,10 +218,15 @@ export default function HomePage() {
             ) : null
           }
           renderItem={({ item }) => (
-            <View style={styles.card}>
+            <Pressable
+              style={styles.card}
+              onPress={() => navigation.navigate("CafeDetails", { locationId: item.id })}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${item.name} café details`}
+            >
               <View style={styles.imagePlaceholder} />
               <Text style={styles.name}>{item.name}</Text>
-            </View>
+            </Pressable>
           )}
           keyExtractor={(item) => `store-${item.id}`}
           horizontal
