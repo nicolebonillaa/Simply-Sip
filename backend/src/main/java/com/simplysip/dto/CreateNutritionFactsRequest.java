@@ -9,11 +9,14 @@ import lombok.Setter;
 public class CreateNutritionFactsRequest {
 
     @NotNull
+    private Long drinkSizeId;
+
     private Integer calories;
-
-    @NotNull
-    private Double sugar;
-
-    @NotNull
-    private Double caffeine;
+    private Double totalFatG;
+    private Double cholesterolMg;
+    private Double sodiumMg;
+    private Double carbsG;
+    private Double sugarsG;
+    private Double proteinG;
+    private Double caffeineMg;
 }

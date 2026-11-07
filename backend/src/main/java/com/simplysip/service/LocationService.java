@@ -29,17 +29,18 @@ public class LocationService {
 
     public Location create(CreateLocationRequest request) {
         Location location = new Location();
-        location.setName(request.getName());
-        location.setAddress(request.getAddress());
-        location.setLatitude(request.getLatitude());
-        location.setLongitude(request.getLongitude());
+        apply(location, request);
         return locationRepository.save(location);
     }
 
     public Optional<Location> update(Long id, Location updates) {
         return locationRepository.findById(id).map(existing -> {
-            existing.setName(updates.getName());
-            existing.setAddress(updates.getAddress());
+            existing.setCafeName(updates.getCafeName());
+            existing.setLocationName(updates.getLocationName());
+            existing.setStreetAddress(updates.getStreetAddress());
+            existing.setCity(updates.getCity());
+            existing.setState(updates.getState());
+            existing.setZip(updates.getZip());
             existing.setLatitude(updates.getLatitude());
             existing.setLongitude(updates.getLongitude());
             return locationRepository.save(existing);
@@ -52,5 +53,16 @@ public class LocationService {
         }
         locationRepository.deleteById(id);
         return true;
+    }
+
+    private static void apply(Location location, CreateLocationRequest request) {
+        location.setCafeName(request.getCafeName());
+        location.setLocationName(request.getLocationName());
+        location.setStreetAddress(request.getStreetAddress());
+        location.setCity(request.getCity());
+        location.setState(request.getState());
+        location.setZip(request.getZip());
+        location.setLatitude(request.getLatitude());
+        location.setLongitude(request.getLongitude());
     }
 }

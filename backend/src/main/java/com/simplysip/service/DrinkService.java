@@ -5,10 +5,12 @@ import com.simplysip.dto.DrinkResponse;
 import com.simplysip.exception.ConflictException;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Drink;
+import com.simplysip.model.DrinkSize;
 import com.simplysip.model.Location;
 import com.simplysip.model.NutritionFacts;
 import com.simplysip.repository.AllergenRepository;
 import com.simplysip.repository.DrinkRepository;
+import com.simplysip.repository.DrinkSizeRepository;
 import com.simplysip.repository.LocationRepository;
 import com.simplysip.repository.NutritionFactsRepository;
 import org.springframework.stereotype.Service;
@@ -17,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 @Service
@@ -27,24 +28,24 @@ public class DrinkService {
     private final DrinkRepository drinkRepository;
     private final LocationRepository locationRepository;
     private final NutritionFactsRepository nutritionFactsRepository;
+    private final DrinkSizeRepository drinkSizeRepository;
     private final AllergenRepository allergenRepository;
 
     public DrinkService(
             DrinkRepository drinkRepository,
             LocationRepository locationRepository,
             NutritionFactsRepository nutritionFactsRepository,
+            DrinkSizeRepository drinkSizeRepository,
             AllergenRepository allergenRepository) {
         this.drinkRepository = drinkRepository;
         this.locationRepository = locationRepository;
         this.nutritionFactsRepository = nutritionFactsRepository;
+        this.drinkSizeRepository = drinkSizeRepository;
         this.allergenRepository = allergenRepository;
     }
 
     public List<DrinkResponse> findAllResponses() {
-        return drinkRepository.findAll()
-                .stream()
-                .map(DrinkResponse::new)
-                .toList();
+        return drinkRepository.findAll().stream().map(DrinkResponse::new).toList();
     }
 
     public List<DrinkResponse> searchResponses(
@@ -56,9 +57,8 @@ public class DrinkService {
             Double maxCaffeine,
             Double minPrice,
             Double maxPrice,
-            String tag,
             String excludeAllergens,
-            String milkTypes) {
+            Boolean includeUnknownAllergens) {
         return search(
                 category,
                 locationId,
@@ -68,23 +68,14 @@ public class DrinkService {
                 maxCaffeine,
                 minPrice,
                 maxPrice,
-                tag,
                 excludeAllergens,
-                milkTypes)
-                .stream()
-                .map(DrinkResponse::new)
-                .toList();
+                includeUnknownAllergens).stream().map(DrinkResponse::new).toList();
     }
 
     public DrinkResponse getResponseById(Long id) {
         return drinkRepository.findById(id)
                 .map(DrinkResponse::new)
-                .orElseThrow(() ->
-                        new NotFoundException("Drink not found: " + id));
-    }
-
-    public List<Drink> findAll() {
-        return drinkRepository.findAll();
+                .orElseThrow(() -> new NotFoundException("Drink not found: " + id));
     }
 
     public List<Drink> search(
@@ -96,48 +87,26 @@ public class DrinkService {
             Double maxCaffeine,
             Double minPrice,
             Double maxPrice,
-            String tag,
             String excludeAllergens,
-            String milkTypes) {
-
+            Boolean includeUnknownAllergens) {
         if (minPrice != null && maxPrice != null && minPrice > maxPrice) {
-            throw new IllegalArgumentException(
-                    "minPrice cannot be greater than maxPrice");
+            throw new IllegalArgumentException("minPrice cannot be greater than maxPrice");
         }
 
         List<String> names = parseCsvLower(excludeAllergens);
-
         if (!names.isEmpty()) {
             List<String> unknown = new ArrayList<>();
-
             for (String name : names) {
                 if (allergenRepository.findByNameIgnoreCase(name).isEmpty()) {
                     unknown.add(name);
                 }
             }
-
             if (!unknown.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "Unknown allergen: " + String.join(", ", unknown));
+                throw new IllegalArgumentException("Unknown allergen: " + String.join(", ", unknown));
             }
         }
 
-        List<String> milks = parseCsvTrimmed(milkTypes);
-
-        if (milks.size() > 6) {
-            throw new IllegalArgumentException(
-                    "At most 6 milkTypes are allowed");
-        }
-
-        String[] milkSlots = new String[6];
-
-        for (int i = 0; i < milks.size(); i++) {
-            milkSlots[i] = milks.get(i)
-                    .toLowerCase()
-                    .replace(" ", "");
-        }
-
-        List<String> requiredTags = parseDietaryTags(tag);
+        boolean includeUnknown = Boolean.TRUE.equals(includeUnknownAllergens);
 
         return drinkRepository.search(
                 blankToNull(category),
@@ -150,47 +119,17 @@ public class DrinkService {
                 maxPrice,
                 !names.isEmpty(),
                 names.isEmpty() ? List.of("__none__") : names,
-                !milks.isEmpty(),
-                milkSlots[0],
-                milkSlots[1],
-                milkSlots[2],
-                milkSlots[3],
-                milkSlots[4],
-                milkSlots[5])
-                .stream()
-                .filter(drink ->
-                        requiredTags.isEmpty()
-                                || parseDietaryTags(drink.getTags())
-                                        .containsAll(requiredTags))
-                .toList();
-    }
-
-    private static List<String> parseDietaryTags(String csv) {
-        return parseCsvTrimmed(csv)
-                .stream()
-                .map(value -> value
-                        .toLowerCase(Locale.ROOT)
-                        .replaceAll("[\\s_-]+", ""))
-                .distinct()
-                .toList();
+                includeUnknown);
     }
 
     private static List<String> parseCsvLower(String csv) {
-        return parseCsvTrimmed(csv)
-                .stream()
-                .map(String::toLowerCase)
-                .distinct()
-                .toList();
-    }
-
-    private static List<String> parseCsvTrimmed(String csv) {
         if (csv == null || csv.isBlank()) {
             return List.of();
         }
-
         return Arrays.stream(csv.split(","))
                 .map(String::trim)
                 .filter(part -> !part.isEmpty())
+                .map(String::toLowerCase)
                 .distinct()
                 .toList();
     }
@@ -199,63 +138,45 @@ public class DrinkService {
         return drinkRepository.findById(id);
     }
 
-    public NutritionFacts getNutritionFacts(Long drinkId) {
-        if (!drinkRepository.existsById(drinkId)) {
-            throw new NotFoundException(
-                    "Drink not found: " + drinkId);
+    public NutritionFacts getNutritionFactsForSize(Long drinkSizeId) {
+        if (!drinkSizeRepository.existsById(drinkSizeId)) {
+            throw new NotFoundException("Drink size not found: " + drinkSizeId);
         }
-
-        return nutritionFactsRepository.findByDrink_Id(drinkId)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Nutrition facts not found for drink "
-                                        + drinkId));
+        return nutritionFactsRepository.findByDrinkSize_Id(drinkSizeId)
+                .orElseThrow(() -> new NotFoundException("Nutrition facts not found for drink size " + drinkSizeId));
     }
 
-    public Drink create(
-            String name,
-            String category,
-            Long locationId) {
+    public Drink create(String name, String category, Long locationId) {
         Location location = locationRepository.findById(locationId)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Location not found: " + locationId));
-
+                .orElseThrow(() -> new NotFoundException("Location not found: " + locationId));
         Drink drink = new Drink();
         drink.setName(name);
         drink.setCategory(category);
         drink.setLocation(location);
-
+        drink.setAllergensKnown(false);
         return drinkRepository.save(drink);
     }
 
-    public DrinkResponse createResponse(
-            String name,
-            String category,
-            Long locationId) {
-        return new DrinkResponse(
-                create(name, category, locationId));
+    public DrinkResponse createResponse(String name, String category, Long locationId) {
+        return new DrinkResponse(create(name, category, locationId));
     }
 
-    public NutritionFacts addNutritionFacts(
-            Long drinkId,
-            CreateNutritionFactsRequest request) {
-        Drink drink = drinkRepository.findById(drinkId)
-                .orElseThrow(() ->
-                        new NotFoundException(
-                                "Drink not found: " + drinkId));
-
-        if (nutritionFactsRepository.findByDrink_Id(drinkId).isPresent()) {
-            throw new ConflictException(
-                    "Nutrition facts already exist for drink " + drinkId);
+    public NutritionFacts addNutritionFacts(CreateNutritionFactsRequest request) {
+        DrinkSize size = drinkSizeRepository.findById(request.getDrinkSizeId())
+                .orElseThrow(() -> new NotFoundException("Drink size not found: " + request.getDrinkSizeId()));
+        if (nutritionFactsRepository.findByDrinkSize(size).isPresent()) {
+            throw new ConflictException("Nutrition facts already exist for drink size " + size.getId());
         }
-
         NutritionFacts facts = new NutritionFacts();
         facts.setCalories(request.getCalories());
-        facts.setSugar(request.getSugar());
-        facts.setCaffeine(request.getCaffeine());
-        facts.setDrink(drink);
-
+        facts.setTotalFatG(request.getTotalFatG());
+        facts.setCholesterolMg(request.getCholesterolMg());
+        facts.setSodiumMg(request.getSodiumMg());
+        facts.setCarbsG(request.getCarbsG());
+        facts.setSugarsG(request.getSugarsG());
+        facts.setProteinG(request.getProteinG());
+        facts.setCaffeineMg(request.getCaffeineMg());
+        size.setNutritionFacts(facts);
         return nutritionFactsRepository.save(facts);
     }
 
@@ -263,43 +184,16 @@ public class DrinkService {
         return drinkRepository.findById(id).map(existing -> {
             existing.setName(updates.getName());
             existing.setCategory(updates.getCategory());
-            existing.setTags(updates.getTags());
-            existing.setPrice(updates.getPrice());
-            existing.setMilkTypes(updates.getMilkTypes());
+            existing.setDescription(updates.getDescription());
+            existing.setSourceUrl(updates.getSourceUrl());
+            existing.setAllergensKnown(updates.isAllergensKnown());
 
-            if (
-                    updates.getLocation() != null
-                            && updates.getLocation().getId() != null
-            ) {
-                Location location = locationRepository.findById(
-                                updates.getLocation().getId())
-                        .orElseThrow(() ->
-                                new NotFoundException(
-                                        "Location not found: "
-                                                + updates.getLocation().getId()));
-
+            if (updates.getLocation() != null && updates.getLocation().getId() != null) {
+                Location location = locationRepository.findById(updates.getLocation().getId())
+                        .orElseThrow(() -> new NotFoundException("Location not found: " + updates.getLocation().getId()));
                 existing.setLocation(location);
             } else {
                 existing.setLocation(null);
-            }
-
-            if (updates.getNutritionFacts() != null) {
-                NutritionFacts incoming = updates.getNutritionFacts();
-
-                if (existing.getNutritionFacts() == null) {
-                    NutritionFacts facts = new NutritionFacts();
-                    facts.setCalories(incoming.getCalories());
-                    facts.setSugar(incoming.getSugar());
-                    facts.setCaffeine(incoming.getCaffeine());
-                    existing.setNutritionFacts(facts);
-                } else {
-                    existing.getNutritionFacts()
-                            .setCalories(incoming.getCalories());
-                    existing.getNutritionFacts()
-                            .setSugar(incoming.getSugar());
-                    existing.getNutritionFacts()
-                            .setCaffeine(incoming.getCaffeine());
-                }
             }
 
             return drinkRepository.save(existing);
@@ -310,14 +204,11 @@ public class DrinkService {
         if (!drinkRepository.existsById(id)) {
             return false;
         }
-
         drinkRepository.deleteById(id);
         return true;
     }
 
     private static String blankToNull(String value) {
-        return value == null || value.isBlank()
-                ? null
-                : value.trim();
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }

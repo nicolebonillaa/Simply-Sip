@@ -1,0 +1,22 @@
+[
+  {
+    "cafeName": "It's Boba Time",
+    "locationName": "It's Boba Time",
+    "streetAddress": "19600 Plummer St Suite 600",
+    "city": "Northridge",
+    "state": "CA",
+    "zip": "91324",
+    "latitude": null,
+    "longitude": null
+  },
+  {
+    "cafeName": "Qwench",
+    "locationName": "Qwench",
+    "streetAddress": "19515 Nordhoff St",
+    "city": "Northridge",
+    "state": "CA",
+    "zip": "91324",
+    "latitude": null,
+    "longitude": null
+  }
+]
