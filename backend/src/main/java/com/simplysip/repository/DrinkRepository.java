@@ -16,12 +16,11 @@ public interface DrinkRepository extends JpaRepository<Drink, Long> {
             WHERE (:category IS NULL OR LOWER(d.category) = LOWER(:category))
               AND (:locationId IS NULL OR l.id = :locationId)
               AND (:q IS NULL OR LOWER(d.name) LIKE LOWER(CONCAT('%', :q, '%')))
-              AND (:maxCalories IS NULL OR n.calories IS NULL OR n.calories <= :maxCalories)
-              AND (:maxSugar IS NULL OR n.sugar IS NULL OR n.sugar <= :maxSugar)
-              AND (:maxCaffeine IS NULL OR n.caffeine IS NULL OR n.caffeine <= :maxCaffeine)
-              AND (:minPrice IS NULL OR d.price IS NULL OR d.price >= :minPrice)
-              AND (:maxPrice IS NULL OR d.price IS NULL OR d.price <= :maxPrice)
-              AND (:tag IS NULL OR LOWER(d.tags) LIKE LOWER(CONCAT('%', :tag, '%')))
+              AND (:maxCalories IS NULL OR n.calories <= :maxCalories)
+              AND (:maxSugar IS NULL OR n.sugar <= :maxSugar)
+              AND (:maxCaffeine IS NULL OR n.caffeine <= :maxCaffeine)
+              AND (:minPrice IS NULL OR d.price >= :minPrice)
+              AND (:maxPrice IS NULL OR d.price <= :maxPrice)
               AND (:applyExclude = false OR d.id NOT IN (
                     SELECT d2.id FROM Drink d2 JOIN d2.allergens a
                     WHERE LOWER(a.name) IN :excludeNames
@@ -51,7 +50,6 @@ public interface DrinkRepository extends JpaRepository<Drink, Long> {
             @Param("maxCaffeine") Double maxCaffeine,
             @Param("minPrice") Double minPrice,
             @Param("maxPrice") Double maxPrice,
-            @Param("tag") String tag,
             @Param("applyExclude") boolean applyExclude,
             @Param("excludeNames") List<String> excludeNames,
             @Param("applyMilk") boolean applyMilk,
