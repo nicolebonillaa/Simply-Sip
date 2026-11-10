@@ -13,8 +13,18 @@ export interface Drink {
   allergens?: string[];
   location: Location | null;
   nutritionFacts: NutritionFacts | null;
+  sizes: DrinkSize[];
+  allergensKnown: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DrinkSize {
+  id: number;
+  sizeName: string;
+  ounces: number | null;
+  price: number | null;
+  nutritionFacts: NutritionFacts | null;
 }
 
 export interface DrinkParams {
@@ -29,12 +39,15 @@ export interface DrinkParams {
   tag?: string;
   excludeAllergens?: string;
   milkTypes?: string;
+  includeUnknownAllergens?: boolean;
 }
 
 export interface Location {
   id: number;
   name: string;
   address: string;
+  cafeName: string | null;
+  locationName: string | null;
   latitude: number;
   longitude: number;
   createdAt: string;
@@ -46,6 +59,11 @@ export interface NutritionFacts {
   calories: number | null;
   sugar: number | null;
   caffeine: number | null;
+  totalFatG?: number | null;
+  cholesterolMg?: number | null;
+  sodiumMg?: number | null;
+  carbsG?: number | null;
+  proteinG?: number | null;
 }
 
 export interface User {

@@ -16,6 +16,7 @@
     "expo-location": "~57.0.20",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
     "formik": "^2.4.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",

@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
+import { PRIVACY_URL, TERMS_URL } from '../constants/legal';
+import * as WebBrowser from "expo-web-browser";
 
 type SettingItemProps = {
   icon: React.ComponentProps<typeof Feather>["name"];
@@ -47,13 +49,21 @@ const SectionTitle = ({ title }: { title: string }) => {
 };
 
 const SettingsPage = () => {
-  const { theme } = useTheme();
+  const {
+    theme, mode, isDark, lightTabIcons, darkTabIcons,
+  } = useTheme();
   const navigation = useNavigation();
 
   // Temporary mock authentication state
   const [isSignedIn, setIsSignedIn] = useState(false);
 
   const styles = createStyles(theme);
+
+  const openLink = (url: string) =>
+  WebBrowser.openBrowserAsync(url, {
+    toolbarColor: theme.background,
+    controlsColor: theme.icon,
+  });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -84,8 +94,8 @@ const SettingsPage = () => {
         <SettingItem
           icon="moon"
           title="Appearance"
-          subtitle="Choose light or dark mode"
-          onPress={() => console.log("Appearance pressed")}
+          subtitle={`${mode === "system" ? "Device setting" : isDark ? "Dark" : "Light"} · ${isDark ? darkTabIcons : lightTabIcons} icons`}
+          onPress={() => navigation.navigate("Appearance" as never)}
         />
 
         {isSignedIn && (
@@ -149,19 +159,19 @@ const SettingsPage = () => {
         <SettingItem
           icon="info"
           title="About Simply Sip"
-          onPress={() => console.log("About pressed")}
+          onPress={() => navigation.navigate("About" as never)}
         />
 
         <SettingItem
           icon="shield"
           title="Privacy Policy"
-          onPress={() => console.log("Privacy policy pressed")}
+          onPress={() => openLink(PRIVACY_URL)}
         />
 
         <SettingItem
           icon="file-text"
           title="Terms of Service"
-          onPress={() => console.log("Terms pressed")}
+          onPress={() => openLink(TERMS_URL)}
         />
       </View>
     </ScrollView>

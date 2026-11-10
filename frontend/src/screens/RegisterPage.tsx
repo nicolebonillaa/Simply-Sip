@@ -145,7 +145,7 @@ const RegisterPage = () => {
             style={styles.socialButton}
             onPress={() => console.log("Apple pressed")}
           >
-            <FontAwesome5 name="apple" size={22} color="black" />
+            <FontAwesome5 name="apple" size={22} color={theme.text} />
             <Text style={styles.socialButtonText}>Continue with Apple</Text>
           </Pressable>
         </View>

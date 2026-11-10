@@ -14,6 +14,8 @@ import MapScreen from "../screens/MapScreen";
 import RegisterPage from "../screens/RegisterPage";
 import LoginPage from "../screens/LoginPage";
 import SettingsPage from "../screens/SettingsPage";
+import AppearancePage from "../screens/AppearancePage";
+import AboutPage from "../screens/AboutPage";
 
 const RootStack = createNativeStackNavigator();
 
@@ -43,6 +45,8 @@ export default function RootNavigator() {
         <RootStack.Screen name="Register" component={RegisterPage} />
         <RootStack.Screen name="Login" component={LoginPage} />
         <RootStack.Screen name="Settings" component={SettingsPage} />
+        <RootStack.Screen name="Appearance" component={AppearancePage} />
+        <RootStack.Screen name="About" component={AboutPage} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
