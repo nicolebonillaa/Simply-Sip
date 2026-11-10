@@ -139,6 +139,7 @@ public class CsvDrinkImportService {
         String category = cleanString(get(record, "category"));
         String description = cleanString(get(record, "description"));
         String sourceUrl = cleanString(get(record, "url"));
+        String imageUrl = cleanString(get(record, "image_url"));
         String sizeRaw = cleanString(get(record, "size"));
         Double ounces = parseDouble(get(record, "ounces"));
         BigDecimal price = parseDecimal(get(record, "price_usd"));
@@ -182,6 +183,7 @@ public class CsvDrinkImportService {
         drink.setCategory(category);
         drink.setDescription(description);
         drink.setSourceUrl(sourceUrl);
+        drink.setImageUrl(imageUrl);
         drink.setAllergensKnown(allergenParse.known);
         drink.setAllergens(new HashSet<>(allergenParse.allergens));
         drink = drinkRepository.save(drink);
@@ -230,7 +232,6 @@ public class CsvDrinkImportService {
             List<LocationSeed> seeds = objectMapper.readValue(
                     resource.getInputStream(), new TypeReference<List<LocationSeed>>() {});
             for (LocationSeed seed : seeds) {
-                // TODO: fill latitude/longitude for CSUN cafes when geocoded
                 String cafe = seed.cafeName == null ? null : seed.cafeName.trim();
                 if (cafe == null || cafe.isBlank()) {
                     continue;
@@ -248,6 +249,7 @@ public class CsvDrinkImportService {
                 location.setZip(seed.zip);
                 location.setLatitude(seed.latitude);
                 location.setLongitude(seed.longitude);
+                location.setImageUrl(cleanString(seed.imageUrl));
                 location = locationRepository.save(location);
                 byCafe.put(cafe.toLowerCase(Locale.ROOT), location);
             }
@@ -389,5 +391,7 @@ public class CsvDrinkImportService {
         public String zip;
         public Double latitude;
         public Double longitude;
+        public String imageUrl;
     }
 }
+
