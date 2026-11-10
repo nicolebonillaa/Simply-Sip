@@ -130,7 +130,7 @@ export default function CafeDetails() {
                     <>
                         <View style={styles.photo} accessibilityLabel="Café photo unavailable" />
                         <Text style={styles.title}>{cafe.name}</Text>
-                        <Text style={styles.address}>{cafe.address}</Text>
+                        <Text style={styles.address}>{cafe.address || "Address not available"}</Text>
                         {miles !== null && (
                             <Text style={styles.distance}>{miles.toFixed(1)} mi from CSUN</Text>
                         )}

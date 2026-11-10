@@ -121,7 +121,7 @@ const LoginPage = () => {
           style={styles.socialButton}
           onPress={() => console.log("Apple pressed")}
         >
-          <FontAwesome5 name="apple" size={22} color="#000000" />
+          <FontAwesome5 name="apple" size={22} color={theme.text} />
           <Text style={styles.socialButtonText}>Continue with Apple</Text>
         </Pressable>
       </View>

@@ -1,16 +1,17 @@
 import api from "./api";
 import type { Allergen, Drink, DrinkParams } from "../types";
+import { normalizeDrink, type ApiDrink } from "./normalizeApi";
 
 export const getDrinks = async (
   params?: DrinkParams,
 ): Promise<Drink[]> => {
-  const response = await api.get<Drink[]>("/api/drinks", { params });
-  return response.data;
+  const response = await api.get<ApiDrink[]>("/api/drinks", { params });
+  return response.data.map(normalizeDrink);
 };
 
 export const getDrinkById = async (id: number): Promise<Drink> => {
-  const response = await api.get<Drink>(`/api/drinks/${id}`);
-  return response.data;
+  const response = await api.get<ApiDrink>(`/api/drinks/${id}`);
+  return normalizeDrink(response.data);
 };
 
 export const getAllergens = async (): Promise<Allergen[]> => {

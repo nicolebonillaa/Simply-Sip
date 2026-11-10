@@ -225,7 +225,11 @@ export function getSpotFacts(
         : null),
     rating: toNumber(spot.rating),
     dietary: parseTags(spot.tags ?? spot.dietary),
-    allergens: toList(spot.allergens),
+    // Unknown allergens must not be treated as an allergen-free drink.
+    allergens:
+      spot.allergensKnown === false
+        ? null
+        : toList(spot.allergens),
     milkTypes: toList(spot.milkTypes),
   };
 }
@@ -245,17 +249,42 @@ export function applyFilters<T extends AnySpot>(
   const filtered = spots.filter((spot) => {
     const facts = getSpotFacts(spot, userLocation);
 
-    if (
-      filters.maxCalories !== null &&
-      (facts.calories === null ||
-        facts.calories > filters.maxCalories)
-    ) {
-      return false;
-    }
+    const variants: AnySpot[] =
+      Array.isArray(spot.sizes) && spot.sizes.length
+        ? spot.sizes
+        : [spot];
 
+    const hasNumericFilters =
+      filters.maxCalories !== null ||
+      filters.maxSugar !== null ||
+      filters.minPrice !== null ||
+      filters.maxPrice !== null;
+
+    // One size must satisfy all selected nutrition and price limits.
     if (
-      filters.maxSugar !== null &&
-      (facts.sugar === null || facts.sugar > filters.maxSugar)
+      hasNumericFilters &&
+      !variants.some((size) => {
+        const calories = toNumber(
+          size.nutritionFacts?.calories,
+        );
+        const sugar = toNumber(size.nutritionFacts?.sugar);
+        const price = toNumber(size.price);
+
+        return (
+          (filters.maxCalories === null ||
+            (calories !== null &&
+              calories <= filters.maxCalories)) &&
+          (filters.maxSugar === null ||
+            (sugar !== null &&
+              sugar <= filters.maxSugar)) &&
+          (filters.minPrice === null ||
+            (price !== null &&
+              price >= filters.minPrice)) &&
+          (filters.maxPrice === null ||
+            (price !== null &&
+              price <= filters.maxPrice))
+        );
+      })
     ) {
       return false;
     }
@@ -266,24 +295,6 @@ export function applyFilters<T extends AnySpot>(
         facts.distance > filters.maxDistance)
     ) {
       return false;
-    }
-
-    if (filters.minPrice !== null || filters.maxPrice !== null) {
-      if (facts.price === null) return false;
-
-      if (
-        filters.minPrice !== null &&
-        facts.price < filters.minPrice
-      ) {
-        return false;
-      }
-
-      if (
-        filters.maxPrice !== null &&
-        facts.price > filters.maxPrice
-      ) {
-        return false;
-      }
     }
 
     for (const key of DIET_KEYS) {
@@ -344,7 +355,9 @@ export function applyFilters<T extends AnySpot>(
                 ? -facts.rating
                 : null;
 
-    return result === null ? Number.POSITIVE_INFINITY : result;
+    return result === null
+      ? Number.POSITIVE_INFINITY
+      : result;
   };
 
   return filtered.slice().sort((a, b) => {
@@ -377,27 +390,17 @@ export function toDrinkParams(
   query: string,
   filters: Filters,
 ): DrinkParams {
-  const dietaryTags = [
-    filters.vegan ? "vegan" : null,
-    filters.vegetarian ? "vegetarian" : null,
-    filters.dairyFree ? "dairy-free" : null,
-    filters.glutenFree ? "gluten-free" : null,
-  ].filter((tag): tag is string => tag !== null);
-
   return {
     q: query.trim() || undefined,
     maxCalories: filters.maxCalories ?? undefined,
     maxSugar: filters.maxSugar ?? undefined,
     minPrice: filters.minPrice ?? undefined,
     maxPrice: filters.maxPrice ?? undefined,
-    milkTypes: filters.milkTypes.length
-      ? filters.milkTypes
-          .map((milk) => normalize(milk))
-          .join(",")
-      : undefined,
-    tag: dietaryTags.length ? dietaryTags.join(",") : undefined,
     excludeAllergens: filters.allergens.length
       ? filters.allergens.join(",")
+      : undefined,
+    includeUnknownAllergens: filters.allergens.length
+      ? false
       : undefined,
   };
 }
