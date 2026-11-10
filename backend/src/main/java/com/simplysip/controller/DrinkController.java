@@ -2,6 +2,7 @@ package com.simplysip.controller;
 
 import com.simplysip.dto.CreateDrinkRequest;
 import com.simplysip.dto.CreateNutritionFactsRequest;
+import com.simplysip.dto.DrinkFilterOptions;
 import com.simplysip.dto.DrinkResponse;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.NutritionFacts;
@@ -35,25 +36,25 @@ public class DrinkController {
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) String excludeAllergens,
-            @RequestParam(required = false) Boolean includeUnknownAllergens) {
-        if (category == null && locationId == null && q == null
-                && maxCalories == null && maxSugar == null && maxCaffeine == null
-                && minPrice == null && maxPrice == null
-                && (excludeAllergens == null || excludeAllergens.isBlank())
-                && includeUnknownAllergens == null) {
-            return drinkService.findAllResponses();
-        }
-        return drinkService.searchResponses(
-                category,
-                locationId,
-                q,
-                maxCalories,
-                maxSugar,
-                maxCaffeine,
-                minPrice,
-                maxPrice,
-                excludeAllergens,
-                includeUnknownAllergens);
+            @RequestParam(required = false) Boolean includeUnknownAllergens,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double maxDistance) {
+        return drinkService.findResponses(DrinkFilterOptions.builder()
+                .category(category)
+                .locationId(locationId)
+                .q(q)
+                .maxCalories(maxCalories)
+                .maxSugar(maxSugar)
+                .maxCaffeine(maxCaffeine)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .excludeAllergens(excludeAllergens)
+                .includeUnknownAllergens(includeUnknownAllergens)
+                .lat(lat)
+                .lng(lng)
+                .maxDistance(maxDistance)
+                .build());
     }
 
     @GetMapping("/{id}")

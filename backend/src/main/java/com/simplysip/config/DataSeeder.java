@@ -61,6 +61,8 @@ public class DataSeeder implements CommandLineRunner {
         ensureAllergen("Eggs");
         ensureAllergen("Wheat");
 
+        backfillDemoImageUrls();
+
         if (drinkRepository.count() > 0) {
             return;
         }
@@ -73,7 +75,8 @@ public class DataSeeder implements CommandLineRunner {
                 "CA",
                 "91330",
                 34.2410,
-                -118.5290);
+                -118.5290,
+                "/images/latte.jpg");
         Location starbucks = location(
                 "Starbucks - Reseda",
                 "Starbucks - Reseda",
@@ -82,7 +85,8 @@ public class DataSeeder implements CommandLineRunner {
                 "CA",
                 "91324",
                 34.2405,
-                -118.5360);
+                -118.5360,
+                null);
         Location juiceIt = location(
                 "Juice It Up!",
                 "Juice It Up!",
@@ -91,7 +95,8 @@ public class DataSeeder implements CommandLineRunner {
                 "CA",
                 "91324",
                 34.2388,
-                -118.5535);
+                -118.5535,
+                null);
 
         Allergen soy = ensureAllergen("Soy");
         Allergen treeNuts = ensureAllergen("Tree nuts");
@@ -101,6 +106,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Coffee",
                 "Classic iced espresso with milk.",
                 null,
+                "/images/latte.jpg",
                 true,
                 matador,
                 Set.of(),
@@ -114,6 +120,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Matcha Green Tea Latte",
                 "Tea",
                 "Sweetened matcha with milk.",
+                null,
                 null,
                 true,
                 starbucks,
@@ -129,6 +136,7 @@ public class DataSeeder implements CommandLineRunner {
                 "Smoothie",
                 "Mixed berry smoothie.",
                 null,
+                null,
                 true,
                 juiceIt,
                 Set.of(treeNuts),
@@ -142,6 +150,22 @@ public class DataSeeder implements CommandLineRunner {
         favorite(alice, icedLatte);
         favorite(bob, matcha);
         favorite(cara, smoothie);
+    }
+
+    private void backfillDemoImageUrls() {
+        locationRepository.findByCafeNameIgnoreCase("Matador Bookstore Cafe").ifPresent(location -> {
+            if (location.getImageUrl() == null || location.getImageUrl().isBlank()) {
+                location.setImageUrl("/images/latte.jpg");
+                locationRepository.save(location);
+            }
+        });
+        drinkRepository.findAll().stream()
+                .filter(drink -> "Iced Latte".equalsIgnoreCase(drink.getName()))
+                .filter(drink -> drink.getImageUrl() == null || drink.getImageUrl().isBlank())
+                .forEach(drink -> {
+                    drink.setImageUrl("/images/latte.jpg");
+                    drinkRepository.save(drink);
+                });
     }
 
     private Allergen ensureAllergen(String name) {
@@ -174,7 +198,8 @@ public class DataSeeder implements CommandLineRunner {
             String state,
             String zip,
             Double lat,
-            Double lng) {
+            Double lng,
+            String imageUrl) {
         return locationRepository.findByCafeNameIgnoreCase(cafeName).orElseGet(() -> {
             Location location = new Location();
             location.setCafeName(cafeName);
@@ -185,6 +210,7 @@ public class DataSeeder implements CommandLineRunner {
             location.setZip(zip);
             location.setLatitude(lat);
             location.setLongitude(lng);
+            location.setImageUrl(imageUrl);
             return locationRepository.save(location);
         });
     }
@@ -194,6 +220,7 @@ public class DataSeeder implements CommandLineRunner {
             String category,
             String description,
             String sourceUrl,
+            String imageUrl,
             boolean allergensKnown,
             Location location,
             Set<Allergen> allergens,
@@ -208,6 +235,7 @@ public class DataSeeder implements CommandLineRunner {
         drink.setCategory(category);
         drink.setDescription(description);
         drink.setSourceUrl(sourceUrl);
+        drink.setImageUrl(imageUrl);
         drink.setAllergensKnown(allergensKnown);
         drink.setLocation(location);
         drink.setAllergens(allergens);

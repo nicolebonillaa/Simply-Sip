@@ -1,6 +1,7 @@
 package com.simplysip.service;
 
 import com.simplysip.dto.CreateNutritionFactsRequest;
+import com.simplysip.dto.DrinkFilterOptions;
 import com.simplysip.dto.DrinkResponse;
 import com.simplysip.exception.ConflictException;
 import com.simplysip.exception.NotFoundException;
@@ -13,6 +14,7 @@ import com.simplysip.repository.DrinkRepository;
 import com.simplysip.repository.DrinkSizeRepository;
 import com.simplysip.repository.LocationRepository;
 import com.simplysip.repository.NutritionFactsRepository;
+import com.simplysip.util.DistanceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,42 @@ public class DrinkService {
         return drinkRepository.findAll().stream().map(DrinkResponse::new).toList();
     }
 
+    public List<DrinkResponse> findResponses(DrinkFilterOptions filters) {
+        return findDrinks(filters).stream().map(DrinkResponse::new).toList();
+    }
+
+    public List<Drink> findDrinks(DrinkFilterOptions filters) {
+        DrinkFilterOptions options = filters == null ? DrinkFilterOptions.builder().build() : filters;
+        validateDistanceParams(options.getLat(), options.getLng(), options.getMaxDistance());
+
+        boolean hasSearchFilters = options.getCategory() != null
+                || options.getLocationId() != null
+                || options.getQ() != null
+                || options.getMaxCalories() != null
+                || options.getMaxSugar() != null
+                || options.getMaxCaffeine() != null
+                || options.getMinPrice() != null
+                || options.getMaxPrice() != null
+                || (options.getExcludeAllergens() != null && !options.getExcludeAllergens().isBlank())
+                || options.getIncludeUnknownAllergens() != null;
+
+        List<Drink> drinks = hasSearchFilters
+                ? search(
+                        options.getCategory(),
+                        options.getLocationId(),
+                        options.getQ(),
+                        options.getMaxCalories(),
+                        options.getMaxSugar(),
+                        options.getMaxCaffeine(),
+                        options.getMinPrice(),
+                        options.getMaxPrice(),
+                        options.getExcludeAllergens(),
+                        options.getIncludeUnknownAllergens())
+                : drinkRepository.findAll();
+
+        return applyDistanceFilter(drinks, options.getLat(), options.getLng(), options.getMaxDistance());
+    }
+
     public List<DrinkResponse> searchResponses(
             String category,
             Long locationId,
@@ -59,7 +97,7 @@ public class DrinkService {
             Double maxPrice,
             String excludeAllergens,
             Boolean includeUnknownAllergens) {
-        return search(
+        return searchResponses(
                 category,
                 locationId,
                 q,
@@ -69,7 +107,41 @@ public class DrinkService {
                 minPrice,
                 maxPrice,
                 excludeAllergens,
-                includeUnknownAllergens).stream().map(DrinkResponse::new).toList();
+                includeUnknownAllergens,
+                null,
+                null,
+                null);
+    }
+
+    public List<DrinkResponse> searchResponses(
+            String category,
+            Long locationId,
+            String q,
+            Integer maxCalories,
+            Double maxSugar,
+            Double maxCaffeine,
+            Double minPrice,
+            Double maxPrice,
+            String excludeAllergens,
+            Boolean includeUnknownAllergens,
+            Double lat,
+            Double lng,
+            Double maxDistance) {
+        return findResponses(DrinkFilterOptions.builder()
+                .category(category)
+                .locationId(locationId)
+                .q(q)
+                .maxCalories(maxCalories)
+                .maxSugar(maxSugar)
+                .maxCaffeine(maxCaffeine)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .excludeAllergens(excludeAllergens)
+                .includeUnknownAllergens(includeUnknownAllergens)
+                .lat(lat)
+                .lng(lng)
+                .maxDistance(maxDistance)
+                .build());
     }
 
     public DrinkResponse getResponseById(Long id) {
@@ -120,6 +192,52 @@ public class DrinkService {
                 !names.isEmpty(),
                 names.isEmpty() ? List.of("__none__") : names,
                 includeUnknown);
+    }
+
+    public static void validateDistanceParams(Double lat, Double lng, Double maxDistance) {
+        boolean any = lat != null || lng != null || maxDistance != null;
+        boolean all = lat != null && lng != null && maxDistance != null;
+        if (any && !all) {
+            throw new IllegalArgumentException("lat, lng, and maxDistance must all be provided together");
+        }
+        if (!all) {
+            return;
+        }
+        if (lat < -90 || lat > 90) {
+            throw new IllegalArgumentException("lat must be between -90 and 90");
+        }
+        if (lng < -180 || lng > 180) {
+            throw new IllegalArgumentException("lng must be between -180 and 180");
+        }
+        if (maxDistance < 0) {
+            throw new IllegalArgumentException("maxDistance must be non-negative");
+        }
+    }
+
+    public static List<Drink> applyDistanceFilter(
+            List<Drink> drinks,
+            Double lat,
+            Double lng,
+            Double maxDistance) {
+        if (lat == null || lng == null || maxDistance == null) {
+            return drinks;
+        }
+        List<Drink> filtered = new ArrayList<>();
+        for (Drink drink : drinks) {
+            Location location = drink.getLocation();
+            if (location == null || location.getLatitude() == null || location.getLongitude() == null) {
+                continue;
+            }
+            double miles = DistanceUtils.miles(
+                    lat,
+                    lng,
+                    location.getLatitude(),
+                    location.getLongitude());
+            if (miles <= maxDistance) {
+                filtered.add(drink);
+            }
+        }
+        return filtered;
     }
 
     private static List<String> parseCsvLower(String csv) {
@@ -186,6 +304,7 @@ public class DrinkService {
             existing.setCategory(updates.getCategory());
             existing.setDescription(updates.getDescription());
             existing.setSourceUrl(updates.getSourceUrl());
+            existing.setImageUrl(updates.getImageUrl());
             existing.setAllergensKnown(updates.isAllergensKnown());
 
             if (updates.getLocation() != null && updates.getLocation().getId() != null) {

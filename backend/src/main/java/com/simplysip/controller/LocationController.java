@@ -1,6 +1,7 @@
 package com.simplysip.controller;
 
 import com.simplysip.dto.CreateLocationRequest;
+import com.simplysip.dto.LocationResponse;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Location;
 import com.simplysip.service.LocationService;
@@ -23,16 +24,16 @@ public class LocationController {
     }
 
     @GetMapping
-    public List<Location> getAll() {
-        return locationService.findAll();
+    public List<LocationResponse> getAll() {
+        return locationService.findAllResponses();
     }
 
     /**
      * Returns one location. A missing id is a JSON 404.
      */
     @GetMapping("/{id}")
-    public Location getById(@PathVariable Long id) {
-        return locationService.findById(id)
+    public LocationResponse getById(@PathVariable Long id) {
+        return locationService.findResponseById(id)
                 .orElseThrow(() -> new NotFoundException("Location not found: " + id));
     }
 
@@ -40,8 +41,8 @@ public class LocationController {
      * Creates a location. Latitude must be -90 to 90 and longitude -180 to 180.
      */
     @PostMapping
-    public ResponseEntity<Location> create(@Valid @RequestBody CreateLocationRequest request) {
-        Location created = locationService.create(request);
+    public ResponseEntity<LocationResponse> create(@Valid @RequestBody CreateLocationRequest request) {
+        LocationResponse created = locationService.createResponse(request);
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(created.getId())
@@ -50,16 +51,16 @@ public class LocationController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Location> update(@PathVariable Long id, @Valid @RequestBody Location location) {
+    public LocationResponse update(@PathVariable Long id, @Valid @RequestBody Location location) {
         return locationService.update(id, location)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(LocationResponse::new)
+                .orElseThrow(() -> new NotFoundException("Location not found: " + id));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         if (!locationService.delete(id)) {
-            return ResponseEntity.notFound().build();
+            throw new NotFoundException("Location not found: " + id);
         }
         return ResponseEntity.noContent().build();
     }

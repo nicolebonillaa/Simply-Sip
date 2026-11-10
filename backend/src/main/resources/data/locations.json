@@ -6,8 +6,9 @@
     "city": "Northridge",
     "state": "CA",
     "zip": "91324",
-    "latitude": null,
-    "longitude": null
+    "latitude": 34.2426,
+    "longitude": -118.5534,
+    "imageUrl": "/images/boba.jpg"
   },
   {
     "cafeName": "Qwench",
@@ -16,7 +17,8 @@
     "city": "Northridge",
     "state": "CA",
     "zip": "91324",
-    "latitude": null,
-    "longitude": null
+    "latitude": 34.2354,
+    "longitude": -118.5363,
+    "imageUrl": "/images/qwench.jpg"
   }
 ]
