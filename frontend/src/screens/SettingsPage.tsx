@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React from "react";
 import { View, Text, StyleSheet, Pressable, ScrollView } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
-import { PRIVACY_URL, TERMS_URL } from '../constants/legal';
+import { PRIVACY_URL, TERMS_URL } from "../constants/legal";
 import * as WebBrowser from "expo-web-browser";
+import { useAuth } from "../auth/AuthContext";
 
 type SettingItemProps = {
   icon: React.ComponentProps<typeof Feather>["name"];
@@ -49,21 +50,19 @@ const SectionTitle = ({ title }: { title: string }) => {
 };
 
 const SettingsPage = () => {
-  const {
-    theme, mode, isDark, lightTabIcons, darkTabIcons,
-  } = useTheme();
+  const { theme, mode, isDark, lightTabIcons, darkTabIcons } = useTheme();
   const navigation = useNavigation();
-
-  // Temporary mock authentication state
-  const [isSignedIn, setIsSignedIn] = useState(false);
 
   const styles = createStyles(theme);
 
+  const { status, signOut } = useAuth();
+  const isSignedIn = status === "signedIn";
+
   const openLink = (url: string) =>
-  WebBrowser.openBrowserAsync(url, {
-    toolbarColor: theme.background,
-    controlsColor: theme.icon,
-  });
+    WebBrowser.openBrowserAsync(url, {
+      toolbarColor: theme.background,
+      controlsColor: theme.icon,
+    });
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -79,14 +78,7 @@ const SettingsPage = () => {
 
         <Text style={styles.headerTitle}>Settings</Text>
       </View>
-      <Pressable
-        style={styles.toggleButton}
-        onPress={() => setIsSignedIn((current) => !current)}
-      >
-        <Text style={styles.toggleText}>
-          Toggle Mode ({isSignedIn ? "Signed In" : "Guest"})
-        </Text>
-      </Pressable>
+
       {/* Preferences */}
       <View style={styles.section}>
         <SectionTitle title="Preferences" />
@@ -130,7 +122,7 @@ const SettingsPage = () => {
             <SettingItem
               icon="log-out"
               title="Log Out"
-              onPress={() => console.log("Log out pressed")}
+              onPress={signOut}
               danger
             />
           </>
@@ -241,20 +233,6 @@ const createStyles = (theme: Theme) =>
       fontSize: 13,
       marginTop: 10,
       marginBottom: 20,
-    },
-    toggleButton: {
-      alignSelf: "flex-start",
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      backgroundColor: theme.button,
-      borderRadius: 8,
-      marginBottom: 25,
-    },
-
-    toggleText: {
-      color: theme.buttonText,
-      fontWeight: "600",
-      fontSize: 14,
     },
   });
 

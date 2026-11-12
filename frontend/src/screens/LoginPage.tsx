@@ -6,11 +6,14 @@ import {
   Pressable,
   ScrollView,
   TextInput,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
 import { Feather, FontAwesome5 } from "@expo/vector-icons";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
 import { useNavigation } from "@react-navigation/native";
 import GoogleLogo from "../components/GoogleLogo";
+import { useAuth } from "../auth/AuthContext";
 
 const LoginPage = () => {
   const navigation = useNavigation();
@@ -22,6 +25,37 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const styles = createStyles(theme);
+
+  const { login } = useAuth();
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<{
+    email?: string;
+    password?: string;
+  }>({});
+
+  const handleLogin = async () => {
+    if (submitting) return;
+
+    const errors: { email?: string; password?: string } = {};
+    if (!/\S+@\S+\.\S+/.test(email.trim()))
+      errors.email = "Enter a valid email address.";
+    if (!password) errors.password = "Enter your password.";
+    setFieldErrors(errors);
+    setError(null);
+    if (Object.keys(errors).length) return;
+
+    setSubmitting(true);
+    try {
+      await login(email, password);
+      Alert.alert("Logged in", email); // TEMPORARY, remove later
+      navigation.goBack();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <ScrollView
@@ -58,6 +92,9 @@ const LoginPage = () => {
             autoCapitalize="none"
             autoCorrect={false}
           />
+          {fieldErrors.email && (
+            <Text style={styles.errorText}>{fieldErrors.email}</Text>
+          )}
         </View>
 
         <View style={styles.inputGroup}>
@@ -90,13 +127,21 @@ const LoginPage = () => {
               />
             </Pressable>
           </View>
+          {fieldErrors.password && (
+            <Text style={styles.errorText}>{fieldErrors.password}</Text>
+          )}
         </View>
-
+        {error && <Text style={styles.errorText}>{error}</Text>}
         <Pressable
-          style={styles.loginButton}
-          onPress={() => console.log("Log in pressed")}
+          style={[styles.loginButton, submitting && { opacity: 0.6 }]}
+          onPress={handleLogin}
+          disabled={submitting}
         >
-          <Text style={styles.loginButtonText}>Log In</Text>
+          {submitting ? (
+            <ActivityIndicator color={theme.buttonText} />
+          ) : (
+            <Text style={styles.loginButtonText}>Log In</Text>
+          )}
         </Pressable>
       </View>
 
@@ -269,6 +314,7 @@ const createStyles = (theme: Theme) =>
       fontSize: 15,
       fontWeight: "600",
     },
+    errorText: { color: "#D32F2F", fontSize: 14 },
   });
 
 export default LoginPage;

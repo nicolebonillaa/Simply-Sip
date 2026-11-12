@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,21 +6,22 @@ import {
   Pressable,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
 import { useNavigation } from "@react-navigation/native";
 
+import { useAuth } from "../auth/AuthContext";
+
 const ProfilePage = () => {
   const navigation = useNavigation();
 
-  // Temporary mock authentication state
   const { theme } = useTheme();
-  const [isSignedIn, setIsSignedIn] = useState(false);
-
-  const mockUsername = "Alex Smith";
-
   const styles = createStyles(theme);
+
+  const { status, user } = useAuth();
+  const isSignedIn = status === "signedIn" && !!user;
 
   const mockFavorites = [
     {
@@ -50,14 +51,6 @@ const ProfilePage = () => {
       {/* Settings button */}
       <View style={styles.header}>
         <Pressable
-          accessibilityLabel="Toggle mode"
-          onPress={() => setIsSignedIn((current) => !current)}
-          style={styles.toggleButton}
-        >
-          <Text style={styles.toggleText}>Toggle Mode</Text>
-        </Pressable>
-
-        <Pressable
           accessibilityLabel="Settings"
           onPress={() => navigation.navigate("Settings" as never)}
           style={styles.settingsButton}
@@ -69,14 +62,16 @@ const ProfilePage = () => {
 
       {/* Profile picture and name */}
       <View style={styles.profileHeader}>
-        {isSignedIn ? (
+        {status === "loading" ? (
+          <ActivityIndicator color={theme.icon} />
+        ) : isSignedIn ? (
           <>
             <Image
               source={require("../../assets/images/profile-picture.png")}
               style={styles.avatar}
             />
 
-            <Text style={styles.name}>{mockUsername}</Text>
+            <Text style={styles.name}>{user?.name}</Text>
           </>
         ) : (
           /* Guest-only sign-in prompt */
@@ -139,7 +134,7 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       alignItems: "center",
       marginBottom: 28,
     },
@@ -240,19 +235,6 @@ const createStyles = (theme: Theme) =>
     },
     location: {
       color: theme.subtext,
-    },
-    toggleButton: {
-      alignSelf: "flex-start",
-      paddingVertical: 10,
-      paddingHorizontal: 16,
-      backgroundColor: theme.button,
-      borderRadius: 8,
-      marginBottom: 25,
-    },
-    toggleText: {
-      color: theme.buttonText,
-      fontWeight: "600",
-      fontSize: 14,
     },
   });
 
