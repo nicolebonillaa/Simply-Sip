@@ -1,5 +1,6 @@
 package com.simplysip.service;
 
+import com.simplysip.dto.FavoriteResponse;
 import com.simplysip.exception.ConflictException;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.Drink;
@@ -38,6 +39,15 @@ public class FavoriteService {
 
     public List<Favorite> findByUserId(Long userId) {
         return favoriteRepository.findByUser_Id(userId);
+    }
+
+    public List<FavoriteResponse> findResponsesByUserId(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found: " + userId);
+        }
+        return favoriteRepository.findByUser_Id(userId).stream()
+                .map(FavoriteResponse::new)
+                .toList();
     }
 
     public Optional<Favorite> findById(Long userId, Long drinkId) {

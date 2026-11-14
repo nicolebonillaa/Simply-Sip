@@ -18,6 +18,7 @@ import {
   FILTER_LIMITS,
   MILK_OPTIONS,
   SORT_OPTIONS,
+  priceLabel,
   supportedFilters,
 } from "../utils/filters";
 
@@ -74,9 +75,7 @@ function Checkbox({
       ]}
       onPress={onPress}
     >
-      <Text
-        style={[styles.optionText, { color: t.text }]}
-      >
+      <Text style={[styles.optionText, { color: t.text }]}>
         {label}
       </Text>
 
@@ -85,9 +84,7 @@ function Checkbox({
           styles.checkbox,
           {
             borderColor: checked ? t.icon : t.subtext,
-            backgroundColor: checked
-              ? t.icon
-              : "transparent",
+            backgroundColor: checked ? t.icon : "transparent",
           },
         ]}
       >
@@ -132,9 +129,7 @@ function NavRow({
       accessibilityState={{ disabled }}
       onPress={onPress}
     >
-      <Text
-        style={[styles.optionText, { color: t.text }]}
-      >
+      <Text style={[styles.optionText, { color: t.text }]}>
         {label}
       </Text>
 
@@ -169,20 +164,19 @@ export default function FilterModal({
 }: FiltersProps) {
   const { theme: t } = useTheme();
 
-  const [screen, setScreen] =
-    useState<Screen>("main");
+  const [screen, setScreen] = useState<Screen>("main");
+  const [sort, setSort] = useState<SortKey[]>(initialFilters.sort);
 
-  const [sort, setSort] =
-    useState<SortKey[]>(initialFilters.sort);
-
-  const [vegan, setVegan] =
-    useState(initialFilters.vegan);
-  const [vegetarian, setVegetarian] =
-    useState(initialFilters.vegetarian);
-  const [dairyFree, setDairyFree] =
-    useState(initialFilters.dairyFree);
-  const [glutenFree, setGlutenFree] =
-    useState(initialFilters.glutenFree);
+  const [vegan, setVegan] = useState(initialFilters.vegan);
+  const [vegetarian, setVegetarian] = useState(
+    initialFilters.vegetarian,
+  );
+  const [dairyFree, setDairyFree] = useState(
+    initialFilters.dairyFree,
+  );
+  const [glutenFree, setGlutenFree] = useState(
+    initialFilters.glutenFree,
+  );
 
   const [maxCalories, setMaxCalories] = useState(
     initialFilters.maxCalories ?? L.calories.max,
@@ -200,14 +194,12 @@ export default function FilterModal({
     initialFilters.maxDistance ?? L.distance.max,
   );
 
-  const [allergenOptions, setAllergenOptions] =
-    useState<string[]>([]);
-  const [allergenLoading, setAllergenLoading] =
-    useState(true);
-  const [allergenError, setAllergenError] =
-    useState(false);
-  const [allergenRetry, setAllergenRetry] =
-    useState(0);
+  const [allergenOptions, setAllergenOptions] = useState<string[]>(
+    [],
+  );
+  const [allergenLoading, setAllergenLoading] = useState(true);
+  const [allergenError, setAllergenError] = useState(false);
+  const [allergenRetry, setAllergenRetry] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
@@ -217,9 +209,7 @@ export default function FilterModal({
     getAllergens()
       .then((items) => {
         if (active) {
-          setAllergenOptions(
-            items.map((item) => item.name),
-          );
+          setAllergenOptions(items.map((item) => item.name));
         }
       })
       .catch(() => {
@@ -234,13 +224,14 @@ export default function FilterModal({
     };
   }, [visible, allergenRetry]);
 
-  const [allergens, setAllergens] =
-    useState<string[]>(initialFilters.allergens);
-  const [milkTypes, setMilkTypes] =
-    useState<string[]>(initialFilters.milkTypes);
+  const [allergens, setAllergens] = useState<string[]>(
+    initialFilters.allergens,
+  );
+  const [milkTypes, setMilkTypes] = useState<string[]>(
+    initialFilters.milkTypes,
+  );
 
-  const savedFilters =
-    useRef<Filters>(initialFilters);
+  const savedFilters = useRef<Filters>(initialFilters);
 
   const toggleAllergen = (allergen: string) => {
     setAllergens((current) =>
@@ -272,15 +263,11 @@ export default function FilterModal({
     setVegetarian(filters.vegetarian);
     setDairyFree(filters.dairyFree);
     setGlutenFree(filters.glutenFree);
-    setMaxCalories(
-      filters.maxCalories ?? L.calories.max,
-    );
+    setMaxCalories(filters.maxCalories ?? L.calories.max);
     setMaxSugar(filters.maxSugar ?? L.sugar.max);
     setMinPrice(filters.minPrice ?? L.price.min);
     setMaxPrice(filters.maxPrice ?? L.price.max);
-    setMaxDistance(
-      filters.maxDistance ?? L.distance.max,
-    );
+    setMaxDistance(filters.maxDistance ?? L.distance.max);
     setAllergens(filters.allergens);
     setMilkTypes(filters.milkTypes);
   };
@@ -297,9 +284,7 @@ export default function FilterModal({
       dairyFree,
       glutenFree,
       maxCalories:
-        maxCalories >= L.calories.max
-          ? null
-          : maxCalories,
+        maxCalories >= L.calories.max ? null : maxCalories,
       maxSugar:
         maxSugar >= L.sugar.max ? null : maxSugar,
       minPrice:
@@ -307,9 +292,7 @@ export default function FilterModal({
       maxPrice:
         maxPrice >= L.price.max ? null : maxPrice,
       maxDistance:
-        maxDistance >= L.distance.max
-          ? null
-          : maxDistance,
+        maxDistance >= L.distance.max ? null : maxDistance,
       allergens,
       milkTypes,
     });
@@ -344,13 +327,11 @@ export default function FilterModal({
   ].filter(Boolean).length;
 
   const priceActive =
-    minPrice > L.price.min ||
-    maxPrice < L.price.max;
+    minPrice > L.price.min || maxPrice < L.price.max;
 
   const priceReadout = !priceActive
     ? "Any price"
-    : minPrice > L.price.min &&
-        maxPrice < L.price.max
+    : minPrice > L.price.min && maxPrice < L.price.max
       ? `$${minPrice}–$${maxPrice}`
       : minPrice > L.price.min
         ? `$${minPrice}+`
@@ -363,30 +344,18 @@ export default function FilterModal({
     slider: React.ReactNode,
   ) => (
     <View style={styles.sliderPad}>
-      <Text
-        style={[styles.readout, { color: t.text }]}
-      >
+      <Text style={[styles.readout, { color: t.text }]}>
         {readout}
       </Text>
 
       {slider}
 
       <View style={styles.ends}>
-        <Text
-          style={[
-            styles.endText,
-            { color: t.subtext },
-          ]}
-        >
+        <Text style={[styles.endText, { color: t.subtext }]}>
           {endMin}
         </Text>
 
-        <Text
-          style={[
-            styles.endText,
-            { color: t.subtext },
-          ]}
-        >
+        <Text style={[styles.endText, { color: t.subtext }]}>
           {endMax}
         </Text>
       </View>
@@ -414,9 +383,7 @@ export default function FilterModal({
       <NavRow
         label="Featured"
         value={
-          sort.length
-            ? `${sort.length} selected`
-            : undefined
+          sort.length ? `${sort.length} selected` : undefined
         }
         onPress={() => setScreen("featured")}
       />
@@ -440,9 +407,7 @@ export default function FilterModal({
       <NavRow
         label="Dietary needs"
         value={
-          dietCount
-            ? `${dietCount} selected`
-            : undefined
+          dietCount ? `${dietCount} selected` : undefined
         }
         onPress={() => setScreen("dietary")}
       />
@@ -479,15 +444,22 @@ export default function FilterModal({
 
       <NavRow
         label="Milk"
-        value="Unavailable"
-        disabled
+        value={
+          milkTypes.length
+            ? milkTypes.join(", ")
+            : undefined
+        }
         onPress={() => setScreen("milk")}
       />
 
       <NavRow
         label="Price range"
-        value="Unavailable"
-        disabled
+        value={
+          priceLabel(
+            minPrice > L.price.min ? minPrice : null,
+            maxPrice < L.price.max ? maxPrice : null,
+          ) || undefined
+        }
         onPress={() => setScreen("price")}
       />
 
@@ -526,9 +498,7 @@ export default function FilterModal({
             <Checkbox
               label="Vegetarian"
               checked={vegetarian}
-              onPress={() =>
-                setVegetarian(!vegetarian)
-              }
+              onPress={() => setVegetarian(!vegetarian)}
             />
             <Checkbox
               label="Dairy-free"
@@ -538,9 +508,7 @@ export default function FilterModal({
             <Checkbox
               label="Gluten-free"
               checked={glutenFree}
-              onPress={() =>
-                setGlutenFree(!glutenFree)
-              }
+              onPress={() => setGlutenFree(!glutenFree)}
             />
           </>
         );
@@ -565,9 +533,7 @@ export default function FilterModal({
               onPress={() => {
                 setAllergenLoading(true);
                 setAllergenError(false);
-                setAllergenRetry(
-                  (value) => value + 1,
-                );
+                setAllergenRetry((value) => value + 1);
               }}
               accessibilityRole="button"
             >
@@ -604,9 +570,7 @@ export default function FilterModal({
               allergen.slice(1)
             }
             checked={allergens.includes(allergen)}
-            onPress={() =>
-              toggleAllergen(allergen)
-            }
+            onPress={() => toggleAllergen(allergen)}
           />
         ));
 
@@ -632,9 +596,7 @@ export default function FilterModal({
             {...L.calories}
             values={[maxCalories]}
             labels={["Maximum calories"]}
-            onChange={([value]) =>
-              setMaxCalories(value)
-            }
+            onChange={([value]) => setMaxCalories(value)}
           />,
         );
 
@@ -650,9 +612,7 @@ export default function FilterModal({
             {...L.sugar}
             values={[maxSugar]}
             labels={["Maximum sugar"]}
-            onChange={([value]) =>
-              setMaxSugar(value)
-            }
+            onChange={([value]) => setMaxSugar(value)}
           />,
         );
 
@@ -665,10 +625,7 @@ export default function FilterModal({
             {...sliderColors}
             {...L.price}
             values={[minPrice, maxPrice]}
-            labels={[
-              "Minimum price",
-              "Maximum price",
-            ]}
+            labels={["Minimum price", "Maximum price"]}
             onChange={([low, high]) => {
               setMinPrice(low);
               setMaxPrice(high);
@@ -688,9 +645,7 @@ export default function FilterModal({
             {...L.distance}
             values={[maxDistance]}
             labels={["Maximum distance"]}
-            onChange={([value]) =>
-              setMaxDistance(value)
-            }
+            onChange={([value]) => setMaxDistance(value)}
           />,
         );
 
@@ -776,13 +731,8 @@ export default function FilterModal({
             </Pressable>
           </View>
 
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-          >
-            {screen === "main"
-              ? renderMain()
-              : renderSub()}
-
+          <ScrollView showsVerticalScrollIndicator={false}>
+            {screen === "main" ? renderMain() : renderSub()}
             <View style={styles.bottomSpace} />
           </ScrollView>
         </View>

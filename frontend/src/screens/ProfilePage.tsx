@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,18 +6,22 @@ import {
   Pressable,
   ScrollView,
   Image,
+  ActivityIndicator,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
+import { useNavigation } from "@react-navigation/native";
+
+import { useAuth } from "../auth/AuthContext";
 
 const ProfilePage = () => {
-  // Temporary mock authentication state
+  const navigation = useNavigation();
+
   const { theme } = useTheme();
-  const [isSignedIn, setIsSignedIn] = useState(false);
-
-  const mockUsername = "Alex Smith";
-
   const styles = createStyles(theme);
+
+  const { status, user } = useAuth();
+  const isSignedIn = status === "signedIn" && !!user;
 
   const mockFavorites = [
     {
@@ -47,16 +51,8 @@ const ProfilePage = () => {
       {/* Settings button */}
       <View style={styles.header}>
         <Pressable
-          accessibilityLabel="Toggle mode"
-          onPress={() => setIsSignedIn((current) => !current)}
-          style={styles.toggleButton}
-        >
-          <Text style={styles.toggleText}>Toggle Mode</Text>
-        </Pressable>
-
-        <Pressable
           accessibilityLabel="Settings"
-          onPress={() => console.log("Settings pressed")}
+          onPress={() => navigation.navigate("Settings" as never)}
           style={styles.settingsButton}
           hitSlop={20}
         >
@@ -66,33 +62,36 @@ const ProfilePage = () => {
 
       {/* Profile picture and name */}
       <View style={styles.profileHeader}>
-        {isSignedIn ? (
+        {status === "loading" ? (
+          <ActivityIndicator color={theme.icon} />
+        ) : isSignedIn ? (
           <>
             <Image
               source={require("../../assets/images/profile-picture.png")}
               style={styles.avatar}
             />
 
-            <Text style={styles.name}>{mockUsername}</Text>
+            <Text style={styles.name}>{user?.name}</Text>
           </>
         ) : (
           /* Guest-only sign-in prompt */
           <View style={styles.accountPrompt}>
             <Text style={styles.promptText}>
-              Sign in or create an account to personalize your experience.
+              Create an account or log in to save your favorite drinks and
+              access them anytime.
             </Text>
 
             <View style={styles.accountButtons}>
               <Pressable
-                style={styles.signUpButton}
-                onPress={() => console.log("Sign up pressed")}
+                style={styles.createAccountButton}
+                onPress={() => navigation.navigate("Register" as never)}
               >
-                <Text style={styles.signUpText}>Sign Up</Text>
+                <Text style={styles.createAccountText}>Create Account</Text>
               </Pressable>
 
               <Pressable
                 style={styles.logInButton}
-                onPress={() => console.log("Log in pressed")}
+                onPress={() => navigation.navigate("Login" as never)}
               >
                 <Text style={styles.logInText}>Log In</Text>
               </Pressable>
@@ -100,22 +99,23 @@ const ProfilePage = () => {
           </View>
         )}
       </View>
+      {isSignedIn && (
+        <View style={styles.favoritesSection}>
+          {/* Favorites */}
+          <Text style={styles.sectionTitle}>My Favorites</Text>
 
-      {/* Favorites */}
-      <View style={styles.favoritesSection}>
-        <Text style={styles.sectionTitle}>My Favorites</Text>
+          {mockFavorites.map((drink) => (
+            <View key={drink.id} style={styles.favoriteItem}>
+              <Feather name="heart" size={20} color={theme.icon} />
 
-        {mockFavorites.map((drink) => (
-          <View key={drink.id} style={styles.favoriteItem}>
-            <Feather name="heart" size={20} color={theme.icon} />
-
-            <View style={styles.favoriteInfo}>
-              <Text style={styles.drinkName}>{drink.name}</Text>
-              <Text style={styles.location}>{drink.location}</Text>
+              <View style={styles.favoriteInfo}>
+                <Text style={styles.drinkName}>{drink.name}</Text>
+                <Text style={styles.location}>{drink.location}</Text>
+              </View>
             </View>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -134,7 +134,7 @@ const createStyles = (theme: Theme) =>
     },
     header: {
       flexDirection: "row",
-      justifyContent: "space-between",
+      justifyContent: "flex-end",
       alignItems: "center",
       marginBottom: 28,
     },
@@ -166,43 +166,47 @@ const createStyles = (theme: Theme) =>
       color: theme.text,
     },
     accountPrompt: {
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: 12,
       marginTop: 12,
       width: "100%",
     },
     promptText: {
       color: theme.subtext,
-      textAlign: "left",
+      textAlign: "center",
       fontSize: 20,
+      lineHeight: 30,
     },
     accountButtons: {
-      flexDirection: "row",
-      gap: 24,
+      flexDirection: "column",
+      gap: 12,
+      width: "100%",
     },
-    signUpButton: {
+    createAccountButton: {
       backgroundColor: theme.background,
-      padding: 10,
-      paddingHorizontal: 38,
+      paddingVertical: 16,
+      width: "100%",
+      alignItems: "center",
       borderRadius: 8,
       borderWidth: 2.5,
       borderColor: theme.button,
     },
-    signUpText: {
+    createAccountText: {
       color: theme.button,
       fontWeight: "600",
-      fontSize: 18,
+      fontSize: 20,
     },
     logInButton: {
       backgroundColor: theme.button,
-      padding: 10,
-      paddingHorizontal: 48,
+      paddingVertical: 16,
+      width: "100%",
+      alignItems: "center",
       borderRadius: 8,
     },
     logInText: {
       color: theme.buttonText,
       fontWeight: "600",
-      fontSize: 18,
+      fontSize: 20,
     },
     favoritesSection: {
       gap: 16,
@@ -231,15 +235,6 @@ const createStyles = (theme: Theme) =>
     },
     location: {
       color: theme.subtext,
-    },
-    toggleButton: {
-      padding: 6,
-      borderWidth: 1,
-      borderColor: theme.inputBorder,
-      borderRadius: 8,
-    },
-    toggleText: {
-      color: theme.text,
     },
   });
 

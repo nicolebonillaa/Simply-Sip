@@ -143,7 +143,7 @@ function SearchResultsContent({
   const hasPending =
     query.trim() !== request.query.trim() ||
     JSON.stringify(filters) !==
-      JSON.stringify(request.filters);
+    JSON.stringify(request.filters);
 
   const activeCount = countActiveFilters(filters);
   const appliedTags = describeFilters(request.filters);
@@ -320,7 +320,24 @@ function SearchResultsContent({
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
           const isSaved = saved.has(item.id);
-          const nutrition = item.nutritionFacts;
+          const displayedSize =
+            item.sizes.find(
+              (size) =>
+                (request.filters.maxCalories === null ||
+                  (size.nutritionFacts?.calories != null &&
+                    size.nutritionFacts.calories <= request.filters.maxCalories)) &&
+                (request.filters.maxSugar === null ||
+                  (size.nutritionFacts?.sugar != null &&
+                    size.nutritionFacts.sugar <= request.filters.maxSugar)) &&
+                (request.filters.minPrice === null ||
+                  (size.price != null &&
+                    size.price >= request.filters.minPrice)) &&
+                (request.filters.maxPrice === null ||
+                  (size.price != null &&
+                    size.price <= request.filters.maxPrice)),
+            ) ?? item.sizes[0];
+
+          const nutrition = displayedSize?.nutritionFacts;
 
           const distance = item.location
             ? distanceInMiles(CSUN, item.location)
@@ -371,30 +388,27 @@ function SearchResultsContent({
                 </Pressable>
               </View>
 
-              <Text style={styles.name}>
-                {item.name}
-              </Text>
-
-              <Text style={styles.meta}>
-                {item.location?.name ??
-                  "Café unavailable"}
-              </Text>
-
-              <Text style={styles.meta}>
-                {[
-                  item.category,
-                  distance !== null
-                    ? `${distance.toFixed(2)} mi from CSUN`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </Text>
-
-              <Text style={styles.meta}>
-                {nutritionText ||
-                  "Nutrition information unavailable"}
-              </Text>
+              <Pressable
+                onPress={() => navigation.navigate("DrinkDetails", { drinkId: item.id })}
+                accessibilityRole="button"
+                accessibilityLabel={`View ${item.name} details`}
+              >
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.meta}>
+                  {item.location?.name ?? "Café unavailable"}
+                </Text>
+                <Text style={styles.meta}>
+                  {[
+                    item.category,
+                    distance !== null
+                      ? `${distance.toFixed(2)} mi from CSUN`
+                      : null,
+                  ].filter(Boolean).join(" · ")}
+                </Text>
+                <Text style={styles.meta}>
+                  {[displayedSize?.sizeName, nutritionText].filter(Boolean).join(" · ") || "Nutrition information unavailable"}
+                </Text>
+              </Pressable>
             </View>
           );
         }}

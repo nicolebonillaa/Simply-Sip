@@ -2,12 +2,13 @@ package com.simplysip.dto;
 
 import com.simplysip.model.Allergen;
 import com.simplysip.model.Drink;
-import com.simplysip.model.Location;
+import com.simplysip.model.DrinkSize;
 import com.simplysip.model.NutritionFacts;
 import lombok.Getter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 @Getter
@@ -16,12 +17,13 @@ public class DrinkResponse {
     private final Long id;
     private final String name;
     private final String category;
-    private final String tags;
-    private final Double price;
-    private final List<String> milkTypes;
+    private final String description;
+    private final String sourceUrl;
+    private final String imageUrl;
+    private final boolean allergensKnown;
     private final List<String> allergens;
-    private final LocationView location;
-    private final NutritionFactsView nutritionFacts;
+    private final LocationResponse location;
+    private final List<DrinkSizeView> sizes;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -29,48 +31,40 @@ public class DrinkResponse {
         this.id = drink.getId();
         this.name = drink.getName();
         this.category = drink.getCategory();
-        this.tags = drink.getTags();
-        this.price = drink.getPrice();
-        this.milkTypes = splitCsv(drink.getMilkTypes());
+        this.description = drink.getDescription();
+        this.sourceUrl = drink.getSourceUrl();
+        this.imageUrl = drink.getImageUrl();
+        this.allergensKnown = drink.isAllergensKnown();
         this.allergens = drink.getAllergens() == null
                 ? List.of()
                 : drink.getAllergens().stream().map(Allergen::getName).sorted().toList();
-        this.location = drink.getLocation() == null ? null : new LocationView(drink.getLocation());
-        this.nutritionFacts = drink.getNutritionFacts() == null
-                ? null
-                : new NutritionFactsView(drink.getNutritionFacts());
+        this.location = drink.getLocation() == null ? null : new LocationResponse(drink.getLocation());
+        this.sizes = drink.getSizes() == null
+                ? List.of()
+                : drink.getSizes().stream()
+                        .sorted(Comparator.comparing(DrinkSize::getSizeName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                        .map(DrinkSizeView::new)
+                        .toList();
         this.createdAt = drink.getCreatedAt();
         this.updatedAt = drink.getUpdatedAt();
     }
 
-    private static List<String> splitCsv(String value) {
-        if (value == null || value.isBlank()) {
-            return List.of();
-        }
-        return Arrays.stream(value.split(","))
-                .map(String::trim)
-                .filter(part -> !part.isEmpty())
-                .toList();
-    }
-
     @Getter
-    public static class LocationView {
+    public static class DrinkSizeView {
         private final Long id;
-        private final String name;
-        private final String address;
-        private final Double latitude;
-        private final Double longitude;
-        private final LocalDateTime createdAt;
-        private final LocalDateTime updatedAt;
+        private final String sizeName;
+        private final Double ounces;
+        private final BigDecimal price;
+        private final NutritionFactsView nutritionFacts;
 
-        public LocationView(Location location) {
-            this.id = location.getId();
-            this.name = location.getName();
-            this.address = location.getAddress();
-            this.latitude = location.getLatitude();
-            this.longitude = location.getLongitude();
-            this.createdAt = location.getCreatedAt();
-            this.updatedAt = location.getUpdatedAt();
+        public DrinkSizeView(DrinkSize size) {
+            this.id = size.getId();
+            this.sizeName = size.getSizeName();
+            this.ounces = size.getOunces();
+            this.price = size.getPrice();
+            this.nutritionFacts = size.getNutritionFacts() == null
+                    ? null
+                    : new NutritionFactsView(size.getNutritionFacts());
         }
     }
 
@@ -78,14 +72,24 @@ public class DrinkResponse {
     public static class NutritionFactsView {
         private final Long id;
         private final Integer calories;
-        private final Double sugar;
-        private final Double caffeine;
+        private final Double totalFatG;
+        private final Double cholesterolMg;
+        private final Double sodiumMg;
+        private final Double carbsG;
+        private final Double sugarsG;
+        private final Double proteinG;
+        private final Double caffeineMg;
 
         public NutritionFactsView(NutritionFacts facts) {
             this.id = facts.getId();
             this.calories = facts.getCalories();
-            this.sugar = facts.getSugar();
-            this.caffeine = facts.getCaffeine();
+            this.totalFatG = facts.getTotalFatG();
+            this.cholesterolMg = facts.getCholesterolMg();
+            this.sodiumMg = facts.getSodiumMg();
+            this.carbsG = facts.getCarbsG();
+            this.sugarsG = facts.getSugarsG();
+            this.proteinG = facts.getProteinG();
+            this.caffeineMg = facts.getCaffeineMg();
         }
     }
 }

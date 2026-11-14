@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/simply sip logo/simply-sip-icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "plugins": [
       [
         "expo-location",
@@ -22,7 +22,9 @@
           "backgroundColor": "#FFFFFF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-web-browser",
+      "expo-secure-store"
     ],
     "ios": {
       "supportsTablet": true,

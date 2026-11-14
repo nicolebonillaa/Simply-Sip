@@ -1,0 +1,6 @@
+cafe,category,drink,size,ounces,price_usd,calories,total_fat_g,cholesterol_mg,sodium_mg,carbs_g,sugars_g,protein_g,caffeine_mg,allergens,description,url,image_url
+It's Boba Time,Milk Tea,classic milk tea,Medium,16,4.50,320,8,25,180,55,42,6,45,milk;soy,Classic black milk tea with boba.,https://example.com/boba/classic-milk-tea,/images/boba.jpg
+It's Boba Time,Milk Tea,classic milk tea,Large,24,5.25,480,12,35,240,80,65,8,60,milk;soy,Classic black milk tea with boba.,https://example.com/boba/classic-milk-tea,/images/boba.jpg
+It's Boba Time,Fruit Tea,mango green tea,Medium,16,4.25,210,0,0,15,52,48,0,30,none,Mango green tea.,https://example.com/boba/mango-green-tea,
+It's Boba Time,Slush,taro slush,Regular,N/A,5.00,390,10,unknown,120,68,55,4,,milk,Taro flavored slush.,https://example.com/boba/taro-slush,
+It's Boba Time,Milk Tea,brown sugar milk tea,,16,5.50,450,11,30,200,70,58,7,40,milk,Brown sugar boba milk tea.,https://example.com/boba/brown-sugar,/images/boba.jpg
