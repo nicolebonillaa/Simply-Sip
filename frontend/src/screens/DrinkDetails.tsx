@@ -10,6 +10,14 @@ import { drinks, stores } from "../fakeDrinks";
 import {SafeAreaView} from "react-native-safe-area-context";
 import {Ionicons} from "@expo/vector-icons";
 
+const formatNutrition = (value: number | null | undefined) =>
+{
+    if (value == null || !Number.isFinite(value) ||value < 0)
+    {
+        return "Not Provided";
+    }
+    return value;
+};
 
 export default function DrinkDetails()
 {
@@ -67,8 +75,8 @@ export default function DrinkDetails()
             </View>
             <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
             <View style={styles.nutritionBox}>
-            <Text style = {styles.nutritionText}>Calories: {pressedDrink.calories} cal</Text>
-            <Text style = {styles.nutritionText}>Sugar: {pressedDrink.sugar} g</Text>
+            <Text style = {styles.nutritionText}>Calories: {formatNutrition(pressedDrink.calories)} cal</Text>
+            <Text style = {styles.nutritionText}>Sugar: {formatNutrition(pressedDrink.sugar)} g</Text>
             </View>
             <Text style={styles.allergensTitle}>Allergens</Text>
             <View style={styles.badgeRow}>

@@ -26,3 +26,10 @@ export const stores =
      {id: 6, name: "Movita"}
      
  ];
+
+ export const favoriteDrinks =
+ [
+    {id: 1, name: "Iced Matcha", category: "Tea", place: "Greenleaf"},
+    {id: 2, name: "Caramel Latte", category: "Coffee", place: "Bean and Brew"},
+    {id: 3, name: "Brown Sugar Boba", category: "Boba", place: "Tea House"},
+ ];

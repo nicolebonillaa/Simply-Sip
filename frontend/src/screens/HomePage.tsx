@@ -185,19 +185,12 @@ export default function HomePage() {
               </Text>
             ) : null
           }
-          renderItem={({ item }) => (
-                                     <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
+      renderItem={({ item }) => (
+      <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
          <View style={styles.card}>
             <View style={styles.imagePlaceholder} />
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.place}>{item.place}</Text>
-            <View style={styles.card}>
-              <View style={styles.imagePlaceholder} />
-
-              <Text style={styles.name}>{item.name}</Text>
-
-              <Text style={styles.place}>
-                {item.location?.name ?? item.place ?? "Café unavailable"}
+            <Text style={styles.place}>{item.place}{item.location?.name ?? item.place ?? "Café unavailable"}
               </Text>
             </View>
          </Pressable>
