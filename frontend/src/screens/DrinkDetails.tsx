@@ -6,6 +6,7 @@ import {
     ActivityIndicator, Alert, Linking, Platform, Pressable,
     ScrollView, StyleSheet, Text, TextInput, View
 } from "react-native";
+import CafeDrinkImage from "../components/CafeDrinkImage";
 
 import { Theme, useTheme } from "../theme/ThemeProvider";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
@@ -228,9 +229,10 @@ export default function DrinkDetails() {
                     </View>
                 ) : (
                     <View style={styles.card}>
-                        <View
+                        <CafeDrinkImage
+                            uri={pressedDrink.imageUrl}
                             style={styles.imagePlaceholder}
-                            accessibilityLabel="Drink photo unavailable"
+                            label={`${pressedDrink.name} photo`}
                         />
 
                         <View style={styles.titleRow}>

@@ -110,13 +110,13 @@ const SettingsPage = () => {
               icon="user"
               title="Account Information"
               subtitle="Manage your personal information"
-              onPress={() => console.log("Account information pressed")}
+              onPress={() => navigation.navigate("AccountInformation" as never)}
             />
 
             <SettingItem
               icon="lock"
               title="Change Password"
-              onPress={() => console.log("Change password pressed")}
+              onPress={() => navigation.navigate("ChangePassword" as never)}
             />
 
             <SettingItem
