@@ -16,7 +16,6 @@ import { CSUN, distanceInMiles } from "../data/mapData";
 import { getDrinkById } from "../services/drinks";
 import type { Drink } from "../types";
 
-<<<<<<< HEAD
 const formatNutrition = (value: number | null | undefined) =>
 {
     if (value == null || !Number.isFinite(value) ||value < 0)
@@ -25,12 +24,10 @@ const formatNutrition = (value: number | null | undefined) =>
     }
     return value;
 };
-=======
 type DrinkDetailsRoute = RouteProp<{ DrinkDetails: { drinkId: number } }, "DrinkDetails">;
 type DraftReview = { rating: number; comment: string };
 type Review = DraftReview & { id: string; name: string; date: string; order: number };
 type ReviewSort = "recent" | "highest" | "lowest";
->>>>>>> main
 
 // Design examples only. The backend does not have a reviews endpoint yet.
 const SAMPLE_REVIEWS: Review[] = [
@@ -55,87 +52,6 @@ const SAMPLE_REVIEWS: Review[] = [
 export default function DrinkDetails() {
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
-<<<<<<< HEAD
-    const[isLiked, setIsLiked] = React.useState(false);
-    
-    const route = useRoute();
-    const navigation = useNavigation();
-    const {drinkId} = route.params || {};
-    
-    const pressedDrink = drinks.find(d => String(d.id) === String(drinkId));
-    
-    if (!pressedDrink)
-    {
-        return (
-                <SafeAreaView style = {styles.safeArea}>
-                <View style={styles.container}>
-                <Text style = {styles.errorText}>Drink not Found.
-                </Text>
-                <Button
-                title="Back to Home Screen"
-                onPress={() => navigation.goBack()}
-                />
-                </View>
-                </SafeAreaView>
-                );
-        
-    }
-    return (
-            <SafeAreaView style = {styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <Pressable onPress={() => navigation.goBack()} style = {styles.backButton}>
-            <Ionicons name = "arrow-back" size={20} color ="#000"/>
-            </Pressable>
-            <View style={styles.card}>
-            <View style={styles.imagePlaceholder} />
-            <View style={styles.titleRow}>
-            <Text style={styles.titleText}>{pressedDrink.name}</Text>
-            <Pressable onPress={() => setIsLiked(!isLiked)} style={styles.likeButton}>
-                <Ionicons
-                    name={isLiked ? "heart" : "heart-outline"}
-                    size={20}
-                    color={isLiked ? "#ef4444" : "#000"}
-                />
-                </Pressable>
-                </View>
-            <Text style = {styles.locationText}>Store Location | 0.5 mi </Text>
-            <View style={styles.starContainer}>
-            <Ionicons name="star" size={20} color="#FFD700" />
-            <Ionicons name="star" size={20} color="#FFD700" />
-            <Ionicons name="star" size={20} color="#FFD700" />
-            <Ionicons name="star" size={20} color="#FFD700" />
-            <Ionicons name="star" size={20} color="#FFD700" />
-            </View>
-            <Text style={styles.nutritionTitle}>Nutrition Facts</Text>
-            <View style={styles.nutritionBox}>
-            <Text style = {styles.nutritionText}>Calories: {formatNutrition(pressedDrink.calories)} cal</Text>
-            <Text style = {styles.nutritionText}>Sugar: {formatNutrition(pressedDrink.sugar)} g</Text>
-            </View>
-            <Text style={styles.allergensTitle}>Allergens</Text>
-            <View style={styles.badgeRow}>
-            <View style={styles.badge}>
-            <Ionicons name="warning-outline" size={12} color ="#b45309" />
-            <Text style={styles.allergenText}> {pressedDrink.allergens} </Text>
-            </View>
-            </View>
-            <Text style = {styles.recipeTitle}>Recipe</Text>
-            <Text style = {styles.ingredientsList}>Ingredient 1, Ingredient 2, Ingredient 3</Text>
-            <View style={styles.buttonContainer}>
-            <Pressable style={styles.getDirButton}
-            onPress={() => Alert.alert ("Direction Button Coming Soon")}>
-            
-        <Text style={styles.getDirButtonText}> Get Directions</Text>
-    </Pressable>
-                    <Pressable style={styles.viewStoreButton}
-            onPress={() => {Alert.alert("View Store Button Coming Soon")}}>
-                        <Text style ={styles.viewStoreText}>View Store</Text>
-                    </Pressable>
-                </View>
-            </View>
-    </ScrollView>
-</SafeAreaView>
-            
-=======
     const [isLiked, setIsLiked] = useState(false);
     const [rating, setRating] = useState(0);
     const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
@@ -870,7 +786,6 @@ export default function DrinkDetails() {
                 )}
             </ScrollView>
         </SafeAreaView>
->>>>>>> main
     );
 }
 

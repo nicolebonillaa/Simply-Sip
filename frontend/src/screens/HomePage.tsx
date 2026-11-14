@@ -195,7 +195,7 @@ export default function HomePage() {
               <View style={styles.imagePlaceholder} />
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.place}>
-                {item.location?.name ?? "Café unavailable"}
+                {item.location?.name ?? item.place ?? "Café unavailable"}
               </Text>
             </Pressable>
           )}

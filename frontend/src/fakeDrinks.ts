@@ -7,12 +7,12 @@
 
 export const drinks =
 [
-    {id: 1, name: "Vanilla Latte", place: "Starbuck's", calories: 190,  sugar: 35, allergens: "Dairy"},
-    {id: 2, name: "Mango Iced Green Tea", place: "It's Boba Time", calories: 100,  sugar: 37, allergens: "None"},
-    {id: 3, name: "Strawberry Banana Smoothie", place: "Jamba Juice", calories: 280,  sugar: 55, allergens: "Dairy"},
-    {id: 4, name: "Green Goddess Cold-Pressed Juice", place: "Pressed Juicery", calories: 120,  sugar: 3, allergens: "None"},
-    {id: 5, name: "Thai Iced Tea with Boba", place: "7 Leaves Cafe", calories: 310,  sugar: 50, allergens: "Dairy"},
-    {id: 6, name: "Caramel Macchiato", place: "Blue Bottle Coffee", calories: 250,  sugar: 33, allergens: "Dairy"}
+    {id: 1, name: "Vanilla Latte", place: "Starbuck's", calories: 190,  sugar: 35, allergens: "Dairy", category: "Coffee"},
+    {id: 2, name: "Mango Iced Green Tea", place: "It's Boba Time", calories: 100,  sugar: 37, allergens: "None", category: "Boba"},
+    {id: 3, name: "Strawberry Banana Smoothie", place: "Jamba Juice", calories: 280,  sugar: 55, allergens: "Dairy", category: "Smoothie"},
+    {id: 4, name: "Green Goddess Cold-Pressed Juice", place: "Pressed Juicery", calories: 120,  sugar: 3, allergens: "None", category: "Juice"},
+    {id: 5, name: "Thai Iced Tea with Boba", place: "7 Leaves Cafe", calories: 310,  sugar: 50, allergens: "Dairy", category: "Boba"},
+    {id: 6, name: "Caramel Macchiato", place: "Blue Bottle Coffee", calories: 250,  sugar: 33, allergens: "Dairy", category: "Coffee"}
     
 ];
 
