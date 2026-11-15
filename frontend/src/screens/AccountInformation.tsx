@@ -13,6 +13,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
+import CircleCropModal from "../components/CircleCropModal";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
 import {
   deleteAccount,
@@ -49,6 +50,11 @@ export default function AccountInformation() {
   const [username, setUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState<{
+    uri: string;
+    width: number;
+    height: number;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -107,16 +113,23 @@ export default function AccountInformation() {
     }
   };
 
+  // Step 1: pick a photo. Cropping happens in our own circular editor (step 2),
+  // because the built-in iOS editor (allowsEditing) is always a square.
   const handleChangePhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      allowsEditing: true, // shows the crop screen
-      aspect: [1, 1],
-      quality: 0.8,
+      allowsEditing: false,
+      quality: 1,
     });
     if (result.canceled) return;
 
-    const uri = result.assets[0].uri;
+    const asset = result.assets[0];
+    setPendingPhoto({ uri: asset.uri, width: asset.width, height: asset.height });
+  };
+
+  // Step 2: the person centered the photo in the circle and tapped Choose.
+  const handlePhotoCropped = async (uri: string) => {
+    setPendingPhoto(null);
 
     // Show the new photo right away.
     setProfile((current) =>
@@ -304,6 +317,15 @@ export default function AccountInformation() {
             </Text>
           </View>
         </>
+      )}
+      {pendingPhoto && (
+        <CircleCropModal
+          uri={pendingPhoto.uri}
+          imageWidth={pendingPhoto.width}
+          imageHeight={pendingPhoto.height}
+          onDone={handlePhotoCropped}
+          onCancel={() => setPendingPhoto(null)}
+        />
       )}
     </ScrollView>
   );
