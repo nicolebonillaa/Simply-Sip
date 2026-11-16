@@ -83,7 +83,22 @@ public class DrinkService {
                         options.getIncludeUnknownAllergens())
                 : drinkRepository.findAll();
 
-        return applyDistanceFilter(drinks, options.getLat(), options.getLng(), options.getMaxDistance());
+        drinks = applyDistanceFilter(drinks, options.getLat(), options.getLng(), options.getMaxDistance());
+        return applyHasImageFilter(drinks, options.getHasImage());
+    }
+
+    static List<Drink> applyHasImageFilter(List<Drink> drinks, Boolean hasImage) {
+        if (hasImage == null) {
+            return drinks;
+        }
+        List<Drink> filtered = new ArrayList<>();
+        for (Drink drink : drinks) {
+            boolean present = drink.getImageUrl() != null && !drink.getImageUrl().isBlank();
+            if (hasImage == present) {
+                filtered.add(drink);
+            }
+        }
+        return filtered;
     }
 
     public List<DrinkResponse> searchResponses(

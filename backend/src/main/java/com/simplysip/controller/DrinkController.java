@@ -39,7 +39,8 @@ public class DrinkController {
             @RequestParam(required = false) Boolean includeUnknownAllergens,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
-            @RequestParam(required = false) Double maxDistance) {
+            @RequestParam(required = false) Double maxDistance,
+            @RequestParam(required = false) Boolean hasImage) {
         return drinkService.findResponses(DrinkFilterOptions.builder()
                 .category(category)
                 .locationId(locationId)
@@ -54,6 +55,7 @@ public class DrinkController {
                 .lat(lat)
                 .lng(lng)
                 .maxDistance(maxDistance)
+                .hasImage(hasImage)
                 .build());
     }
 

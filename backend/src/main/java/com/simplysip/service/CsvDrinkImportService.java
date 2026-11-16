@@ -12,6 +12,7 @@ import com.simplysip.repository.AllergenRepository;
 import com.simplysip.repository.DrinkRepository;
 import com.simplysip.repository.DrinkSizeRepository;
 import com.simplysip.repository.LocationRepository;
+import com.simplysip.util.ImageUrlNormalizer;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -38,8 +39,8 @@ public class CsvDrinkImportService {
 
     private static final Logger log = LoggerFactory.getLogger(CsvDrinkImportService.class);
     private static final String[] CSV_FILES = {
-            "data/it-s-boba-time.csv",
-            "data/qwench-juice-bar.csv"
+            "data/it-s-boba-time_1_.csv",
+            "data/qwench-juice-bar_1_.csv"
     };
 
     private final ImportProperties importProperties;
@@ -69,6 +70,7 @@ public class CsvDrinkImportService {
         ImportSummary summary = new ImportSummary();
         Map<String, Location> locationsByCafe = loadLocations(summary);
         Map<String, Allergen> allergenCache = new HashMap<>();
+        Map<String, String> firstImageByDrinkKey = new HashMap<>();
 
         for (String path : CSV_FILES) {
             ClassPathResource resource = new ClassPathResource(path);
@@ -85,10 +87,11 @@ public class CsvDrinkImportService {
                          .setTrim(true)
                          .build()
                          .parse(reader)) {
+                Map<String, String> headerAliases = trimHeaderMap(parser.getHeaderMap());
                 for (CSVRecord record : parser) {
                     summary.rowsRead++;
                     try {
-                        importRow(record, locationsByCafe, allergenCache, summary);
+                        importRow(record, headerAliases, locationsByCafe, allergenCache, firstImageByDrinkKey, summary);
                     } catch (Exception ex) {
                         summary.skipped++;
                         String reason = "row " + record.getRecordNumber() + ": " + ex.getMessage();
@@ -103,14 +106,18 @@ public class CsvDrinkImportService {
         }
 
         log.info(
-                "CSV import summary: rowsRead={}, drinksCreated={}, drinksUpdated={}, sizesCreated={}, sizesUpdated={}, locationsCreated={}, skipped={}",
+                "CSV import summary: rowsRead={}, drinksCreated={}, drinksUpdated={}, sizesCreated={}, sizesUpdated={}, locationsCreated={}, skipped={}, imagesSet={}, imagesUpdated={}, imagesMissing={}, invalidUrls={}",
                 summary.rowsRead,
                 summary.drinksCreated,
                 summary.drinksUpdated,
                 summary.sizesCreated,
                 summary.sizesUpdated,
                 summary.locationsCreated,
-                summary.skipped);
+                summary.skipped,
+                summary.imagesSet,
+                summary.imagesUpdated,
+                summary.imagesMissing,
+                summary.invalidUrls);
         summary.skippedReasons.forEach((reason, count) ->
                 log.info("  skipped reason ({}x): {}", count, reason));
         return summary;
@@ -118,11 +125,13 @@ public class CsvDrinkImportService {
 
     private void importRow(
             CSVRecord record,
+            Map<String, String> headerAliases,
             Map<String, Location> locationsByCafe,
             Map<String, Allergen> allergenCache,
+            Map<String, String> firstImageByDrinkKey,
             ImportSummary summary) {
-        String cafeRaw = cleanString(get(record, "cafe"));
-        String drinkRaw = cleanString(get(record, "drink"));
+        String cafeRaw = cleanString(get(record, headerAliases, "cafe"));
+        String drinkRaw = cleanString(get(record, headerAliases, "drink"));
         if (drinkRaw == null) {
             throw new IllegalArgumentException("missing drink name");
         }
@@ -136,22 +145,26 @@ public class CsvDrinkImportService {
         }
 
         String drinkName = titleCaseIfAllLower(drinkRaw);
-        String category = cleanString(get(record, "category"));
-        String description = cleanString(get(record, "description"));
-        String sourceUrl = cleanString(get(record, "url"));
-        String imageUrl = cleanString(get(record, "image_url"));
-        String sizeRaw = cleanString(get(record, "size"));
-        Double ounces = parseDouble(get(record, "ounces"));
-        BigDecimal price = parseDecimal(get(record, "price_usd"));
+        String category = cleanString(get(record, headerAliases, "category"));
+        String description = cleanString(get(record, headerAliases, "description"));
+        String sourceUrl = cleanString(get(record, headerAliases, "url"));
+        String sizeRaw = cleanString(get(record, headerAliases, "size"));
+        Double ounces = parseDouble(get(record, headerAliases, "ounces"));
+        BigDecimal price = parseDecimal(get(record, headerAliases, "price_usd"));
 
-        Integer calories = parseInteger(get(record, "calories"));
-        Double totalFatG = parseDouble(get(record, "total_fat_g"));
-        Double cholesterolMg = parseDouble(get(record, "cholesterol_mg"));
-        Double sodiumMg = parseDouble(get(record, "sodium_mg"));
-        Double carbsG = parseDouble(get(record, "carbs_g"));
-        Double sugarsG = parseDouble(get(record, "sugars_g"));
-        Double proteinG = parseDouble(get(record, "protein_g"));
-        Double caffeineMg = parseDouble(get(record, "caffeine_mg"));
+        Integer calories = parseInteger(get(record, headerAliases, "calories"));
+        Double totalFatG = parseDouble(get(record, headerAliases, "total_fat_g"));
+        Double cholesterolMg = parseDouble(get(record, headerAliases, "cholesterol_mg"));
+        Double sodiumMg = parseDouble(get(record, headerAliases, "sodium_mg"));
+        Double carbsG = parseDouble(get(record, headerAliases, "carbs_g"));
+        Double sugarsG = parseDouble(get(record, headerAliases, "sugars_g"));
+        Double proteinG = parseDouble(get(record, headerAliases, "protein_g"));
+        Double caffeineMg = parseDouble(get(record, headerAliases, "caffeine_mg"));
+
+        String rawImage = firstNonBlank(
+                get(record, headerAliases, "image_url"),
+                get(record, headerAliases, "drink_image_url"));
+        String normalizedImage = resolveImageUrl(rawImage, summary);
 
         boolean nutritionEmpty = calories == null && totalFatG == null && cholesterolMg == null
                 && sodiumMg == null && carbsG == null && sugarsG == null && proteinG == null && caffeineMg == null;
@@ -168,7 +181,7 @@ public class CsvDrinkImportService {
                     sizeName);
         }
 
-        AllergenParse allergenParse = parseAllergens(get(record, "allergens"), allergenCache);
+        AllergenParse allergenParse = parseAllergens(get(record, headerAliases, "allergens"), allergenCache);
 
         Drink drink = drinkRepository.findByLocationAndNameIgnoreCase(location, drinkName).orElse(null);
         boolean createdDrink = drink == null;
@@ -180,10 +193,26 @@ public class CsvDrinkImportService {
         } else {
             summary.drinksUpdated++;
         }
-        drink.setCategory(category);
-        drink.setDescription(description);
-        drink.setSourceUrl(sourceUrl);
-        drink.setImageUrl(imageUrl);
+
+        if (createdDrink) {
+            drink.setCategory(category);
+            drink.setDescription(description);
+            drink.setSourceUrl(sourceUrl);
+        } else {
+            if (isBlank(drink.getCategory()) && category != null) {
+                drink.setCategory(category);
+            }
+            if (isBlank(drink.getDescription()) && description != null) {
+                drink.setDescription(description);
+            }
+            if (isBlank(drink.getSourceUrl()) && sourceUrl != null) {
+                drink.setSourceUrl(sourceUrl);
+            }
+        }
+
+        String drinkKey = location.getId() + "|" + drinkName.toLowerCase(Locale.ROOT);
+        applyDrinkImage(drink, drinkKey, normalizedImage, firstImageByDrinkKey, summary);
+
         drink.setAllergensKnown(allergenParse.known);
         drink.setAllergens(new HashSet<>(allergenParse.allergens));
         drink = drinkRepository.save(drink);
@@ -225,6 +254,55 @@ public class CsvDrinkImportService {
         }
     }
 
+    private String resolveImageUrl(String rawImage, ImportSummary summary) {
+        String cleaned = cleanString(rawImage);
+        if (cleaned == null) {
+            summary.imagesMissing++;
+            return null;
+        }
+        String normalized = ImageUrlNormalizer.normalize(cleaned);
+        if (normalized == null) {
+            summary.invalidUrls++;
+            summary.imagesMissing++;
+            return null;
+        }
+        return normalized;
+    }
+
+    private void applyDrinkImage(
+            Drink drink,
+            String drinkKey,
+            String normalizedImage,
+            Map<String, String> firstImageByDrinkKey,
+            ImportSummary summary) {
+        if (normalizedImage == null) {
+            return;
+        }
+        String existingFirst = firstImageByDrinkKey.get(drinkKey);
+        if (existingFirst != null) {
+            if (!existingFirst.equals(normalizedImage)) {
+                log.warn(
+                        "Conflicting image URLs for drink key '{}'; keeping first '{}', ignoring '{}'",
+                        drinkKey,
+                        existingFirst,
+                        normalizedImage);
+            }
+            return;
+        }
+        firstImageByDrinkKey.put(drinkKey, normalizedImage);
+
+        String previous = drink.getImageUrl();
+        if (isBlank(previous)) {
+            drink.setImageUrl(normalizedImage);
+            summary.imagesSet++;
+        } else if (!previous.equals(normalizedImage)) {
+            drink.setImageUrl(normalizedImage);
+            summary.imagesUpdated++;
+        } else {
+            drink.setImageUrl(normalizedImage);
+        }
+    }
+
     private Map<String, Location> loadLocations(ImportSummary summary) {
         Map<String, Location> byCafe = new LinkedHashMap<>();
         try {
@@ -249,7 +327,8 @@ public class CsvDrinkImportService {
                 location.setZip(seed.zip);
                 location.setLatitude(seed.latitude);
                 location.setLongitude(seed.longitude);
-                location.setImageUrl(cleanString(seed.imageUrl));
+                // Location.imageUrl stays null for now (scraper images attach to drinks only).
+                location.setImageUrl(null);
                 location = locationRepository.save(location);
                 byCafe.put(cafe.toLowerCase(Locale.ROOT), location);
             }
@@ -359,11 +438,42 @@ public class CsvDrinkImportService {
         return out.toString();
     }
 
-    private static String get(CSVRecord record, String header) {
-        if (!record.isMapped(header)) {
+    private static Map<String, String> trimHeaderMap(Map<String, Integer> headerMap) {
+        Map<String, String> aliases = new HashMap<>();
+        if (headerMap == null) {
+            return aliases;
+        }
+        for (String header : headerMap.keySet()) {
+            if (header == null) {
+                continue;
+            }
+            aliases.put(header.trim().toLowerCase(Locale.ROOT), header);
+        }
+        return aliases;
+    }
+
+    private static String get(CSVRecord record, Map<String, String> headerAliases, String logicalHeader) {
+        String actual = headerAliases.get(logicalHeader.toLowerCase(Locale.ROOT));
+        if (actual == null) {
             return null;
         }
-        return record.get(header);
+        if (!record.isMapped(actual)) {
+            return null;
+        }
+        String value = record.get(actual);
+        return value == null ? null : value.trim();
+    }
+
+    private static String firstNonBlank(String first, String second) {
+        String a = cleanString(first);
+        if (a != null) {
+            return a;
+        }
+        return cleanString(second);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     public static class ImportSummary {
@@ -374,6 +484,10 @@ public class CsvDrinkImportService {
         public int sizesUpdated;
         public int locationsCreated;
         public int skipped;
+        public int imagesSet;
+        public int imagesUpdated;
+        public int imagesMissing;
+        public int invalidUrls;
         public final Map<String, Integer> skippedReasons = new LinkedHashMap<>();
     }
 
@@ -394,4 +508,3 @@ public class CsvDrinkImportService {
         public String imageUrl;
     }
 }
-

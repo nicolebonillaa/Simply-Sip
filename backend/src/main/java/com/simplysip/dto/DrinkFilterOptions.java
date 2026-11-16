@@ -20,4 +20,5 @@ public class DrinkFilterOptions {
     private final Double lat;
     private final Double lng;
     private final Double maxDistance;
+    private final Boolean hasImage;
 }
