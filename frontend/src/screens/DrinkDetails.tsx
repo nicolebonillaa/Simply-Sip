@@ -15,15 +15,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { isAxiosError } from "axios";
 import { CSUN, distanceInMiles } from "../data/mapData";
 import { getDrinkById } from "../services/drinks";
+import { useAuth } from "../auth/AuthContext";
+import { useFavorites } from "../favorites/FavoritesContext";
 import type { Drink } from "../types";
 
-const formatNutrition = (value: number | null | undefined) =>
+const formatNutrition = (value: number | null | undefined, unit: string) =>
 {
     if (value == null || !Number.isFinite(value) ||value < 0)
     {
-        return "Not Provided";
+        return "Not provided";
     }
-    return value;
+    return `${value} ${unit}`;
 };
 type DrinkDetailsRoute = RouteProp<{ DrinkDetails: { drinkId: number } }, "DrinkDetails">;
 type DraftReview = { rating: number; comment: string };
@@ -53,7 +55,8 @@ const SAMPLE_REVIEWS: Review[] = [
 export default function DrinkDetails() {
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
-    const [isLiked, setIsLiked] = useState(false);
+    const { status, token } = useAuth();
+    const { drinks: favoriteDrinks, loading: favoritesLoading, error: favoritesError, pendingDrinkIds, toggleDrink } = useFavorites();
     const [rating, setRating] = useState(0);
     const [selectedMilk, setSelectedMilk] = useState<string | null>(null);
     const [selectedSizeId, setSelectedSizeId] = useState<number | null>(null);
@@ -70,6 +73,22 @@ export default function DrinkDetails() {
     const route = useRoute<DrinkDetailsRoute>();
     const navigation = useNavigation<any>();
     const drinkId = route.params?.drinkId;
+    const isLiked = favoriteDrinks.some(item => item.drink?.id === drinkId);
+    const savingFavorite = pendingDrinkIds.includes(drinkId);
+
+    async function onFavoritePress() {
+        if (status !== "signedIn" || !token) {
+            Alert.alert("Log in to save drinks", "Sign in from Profile to keep your favorites.");
+            return;
+        }
+        if (favoritesLoading) return;
+        if (favoritesError) {
+            Alert.alert("Favorites unavailable", "Open Favorites and try loading them again.");
+            return;
+        }
+        try { await toggleDrink(drinkId); }
+        catch { Alert.alert("Unable to update favorite", "Please try again."); }
+    }
 
     useEffect(() => {
         let active = true;
@@ -86,7 +105,6 @@ export default function DrinkDetails() {
             setDraftReview(null);
             setReviewSort("recent");
             setVisibleReviews(2);
-            setIsLiked(false);
 
             if (typeof drinkId !== "number" || !Number.isInteger(drinkId) || drinkId <= 0) {
                 setError("not-found");
@@ -248,19 +266,14 @@ export default function DrinkDetails() {
                                 {pressedDrink.name}
                             </Text>
                             <Pressable
-                                onPress={() => {
-                                    setIsLiked(!isLiked);
-                                    Alert.alert(
-                                        "Preview only",
-                                        "Favorites are not saved to your account yet."
-                                    );
-                                }}
+                                onPress={() => { void onFavoritePress(); }}
+                                disabled={savingFavorite || (status === "signedIn" && favoritesLoading)}
                                 style={styles.likeButton}
                                 accessibilityRole="button"
                                 accessibilityLabel={
                                     isLiked
-                                        ? "Remove temporary favorite"
-                                        : "Add temporary favorite"
+                                        ? "Remove drink from favorites"
+                                        : "Save drink to favorites"
                                 }
                             >
                                 <Ionicons
@@ -396,13 +409,11 @@ export default function DrinkDetails() {
                                 <Text
                                     style={[
                                         styles.nutritionText,
-                                        nutrition?.calories == null &&
+                                        (nutrition?.calories == null || !Number.isFinite(nutrition.calories) || nutrition.calories < 0) &&
                                             styles.nutritionMissingText
                                     ]}
                                 >
-                                    {nutrition?.calories != null
-                                        ? `${nutrition.calories} cal`
-                                        : "Not provided"}
+                                    {formatNutrition(nutrition?.calories, "cal")}
                                 </Text>
                             </View>
 
@@ -413,13 +424,11 @@ export default function DrinkDetails() {
                                 <Text
                                     style={[
                                         styles.nutritionText,
-                                        nutrition?.sugar == null &&
+                                        (nutrition?.sugar == null || !Number.isFinite(nutrition.sugar) || nutrition.sugar < 0) &&
                                             styles.nutritionMissingText
                                     ]}
                                 >
-                                    {nutrition?.sugar != null
-                                        ? `${nutrition.sugar} g`
-                                        : "Not provided"}
+                                    {formatNutrition(nutrition?.sugar, "g")}
                                 </Text>
                             </View>
 
@@ -435,13 +444,11 @@ export default function DrinkDetails() {
                                 <Text
                                     style={[
                                         styles.nutritionText,
-                                        nutrition?.caffeine == null &&
+                                        (nutrition?.caffeine == null || !Number.isFinite(nutrition.caffeine) || nutrition.caffeine < 0) &&
                                             styles.nutritionMissingText
                                     ]}
                                 >
-                                    {nutrition?.caffeine != null
-                                        ? `${nutrition.caffeine} mg`
-                                        : "Not provided"}
+                                    {formatNutrition(nutrition?.caffeine, "mg")}
                                 </Text>
                             </View>
                         </View>

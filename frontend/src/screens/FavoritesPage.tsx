@@ -1,227 +1,137 @@
-import React, { useEffect, useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { useTheme } from "../theme/ThemeProvider";
-import type { Theme } from "../theme/ThemeProvider";
-import {favoriteDrinks as initialFavorites } from "../fakeDrinks";
-import {useNavigation} from "@react-navigation/native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import React, { useCallback, useMemo } from "react";
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useAuth } from "../auth/AuthContext";
+import CafeDrinkImage from "../components/CafeDrinkImage";
+import { useFavorites } from "../favorites/FavoritesContext";
+import { useTheme, type Theme } from "../theme/ThemeProvider";
+import type { Favorite } from "../types";
 
 export default function FavoritesPage() {
-  const navigation = useNavigation();
-  const theme = useTheme();
-  const[favoriteDrinks, setFavoriteDrinks] = useState(initialFavorites);
+  const navigation = useNavigation<any>();
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { status, token } = useAuth();
+  const { drinks, cafes, loading, error, pendingDrinkIds, pendingCafeIds, refresh, toggleDrink, toggleCafe } = useFavorites();
 
-  const toggleFavorite = (drink: any) =>
-  {
-    setFavoriteDrinks(favoriteDrinks.filter((d) => d.id !== drink.id));
-  }
+  useFocusEffect(useCallback(() => {
+    if (status === "signedIn" && token) void refresh();
+  }, [status, token, refresh]));
 
-  const coffeeDrinks = favoriteDrinks.filter(drink => drink.category === "Coffee");
-  const teaDrinks = favoriteDrinks.filter(drink => drink.category === "Tea");
-  const bobaDrinks = favoriteDrinks.filter(drink => drink.category === "Boba");
-  const juiceDrinks = favoriteDrinks.filter(drink => drink.category === "Juice");
+  const groups = useMemo(() => {
+    const result = new Map<string, Favorite[]>();
+    for (const favorite of drinks) {
+      if (!favorite.drink) continue;
+      const category = favorite.drink.category || "Other drinks";
+      result.set(category, [...(result.get(category) ?? []), favorite]);
+    }
+    return [...result.entries()].sort(([a], [b]) => a.localeCompare(b));
+  }, [drinks]);
+
+  const removeDrink = async (id: number) => {
+    try { await toggleDrink(id); }
+    catch { Alert.alert("Unable to remove drink", "Please try again."); }
+  };
+  const removeCafe = async (id: number) => {
+    try { await toggleCafe(id); }
+    catch { Alert.alert("Unable to remove café", "Please try again."); }
+  };
 
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-      <Text style={[styles.favTitle, {color: theme.text}]}>Favorites</Text>
-      {coffeeDrinks.length > 0 && (
-        <>
-         
-    <Text style={[styles.sectionTitle, {color: theme.text}]}>Coffee</Text>
-      <FlatList 
-        data={coffeeDrinks}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
-           <View style={styles.card}>
-            <View style={styles.imageContainer}>
-              <View style={styles.imagePlaceholder} />
-              <Pressable
-                style={styles.favButton}
-                onPress={() => toggleFavorite(item)}>
-                >
-              <Ionicons
-                name="heart"
-                size={18}
-                color= "#EF4444"
-                />
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.title}>Favorites</Text>
+        {status === "loading" || (status === "signedIn" && loading && !drinks.length && !cafes.length) ? (
+          <ActivityIndicator color={theme.icon} accessibilityLabel="Loading favorites" />
+        ) : status !== "signedIn" || !token ? (
+          <View style={styles.messageArea}>
+            <Text style={styles.message}>Log in to save your favorite drinks and cafés.</Text>
+            <Pressable onPress={() => navigation.navigate("Login")} accessibilityRole="button">
+              <Text style={styles.action}>Log In</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate("Register")} accessibilityRole="button">
+              <Text style={styles.action}>Create Account</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            {error && (
+              <View style={styles.messageArea}>
+                <Text style={styles.message} accessibilityRole="alert">{error}</Text>
+                <Pressable onPress={() => { void refresh(); }} accessibilityRole="button">
+                  <Text style={styles.action}>Try again</Text>
                 </Pressable>
-                </View>
-              <Text style={[styles.name, {color: theme.text}]}>{item.name}</Text>
-            </View>
-          </Pressable>
-      )}
-      />
-      </>
-    )}
-      {teaDrinks.length > 0 && (
-        <>
-      <Text style={[styles.sectionTitle, {color: theme.text}]}>Tea</Text>
-      <FlatList 
-        data={teaDrinks}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
-           <View style={styles.card}>
-              <View style={styles.imageContainer}>
-              <View style={styles.imagePlaceholder} />
-              <Pressable
-                style={styles.favButton}
-                onPress={() => toggleFavorite(item)}>
-              <Ionicons
-                name= "heart"
-                size={18}
-                color= "#EF4444"
-                />
-                </Pressable>
-                </View>
-              <Text style={[styles.name, {color: theme.text}]}>{item.name}</Text>
-            </View>
-          </Pressable>
-         
-      )}
-      />
-     </>
-    )}
-     
-      {bobaDrinks.length > 0 && (
-        <>
-      <Text style={[styles.sectionTitle, {color: theme.text}]}>Boba</Text>
-      <FlatList 
-        data={bobaDrinks}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
-           <View style={styles.card}>
-            <View style={styles.imageContainer}>
-              <View style={styles.imagePlaceholder} />
-               <Pressable
-                style={styles.favButton}
-                onPress={() => toggleFavorite(item)}>
-              <Ionicons
-                name="heart"
-                size={18}
-                color="#EF4444"
-                />
-                </Pressable>
-                </View>
-              <Text style={[styles.name, {color: theme.text}]}>{item.name}</Text>
-            </View>
-          </Pressable>
+              </View>
+            )}
+            {!loading && !error && !drinks.length && !cafes.length && (
+              <Text style={styles.message}>No favorites yet. Save a drink or café to see it here.</Text>
+            )}
+            {groups.map(([category, items]) => (
+              <View key={category} style={styles.section}>
+                <Text style={styles.heading}>{category}</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {items.map(({ drink }) => (
+                    <View key={drink.id} style={styles.card}>
+                      <Pressable onPress={() => navigation.navigate("DrinkDetails", { drinkId: drink.id })}
+                        accessibilityRole="button" accessibilityLabel={`View ${drink.name}`}>
+                        <CafeDrinkImage uri={drink.imageUrl} style={styles.photo} label={`${drink.name} photo`} />
+                        <Text style={styles.cardTitle}>{drink.name}</Text>
+                        <Text style={styles.subtitle}>{drink.location?.name || "Café unavailable"}</Text>
+                      </Pressable>
+                      <Pressable style={styles.saveButton} onPress={() => { void removeDrink(drink.id); }}
+                        disabled={loading || !!error || pendingDrinkIds.includes(drink.id)} accessibilityRole="button"
+                        accessibilityLabel={`Remove ${drink.name} from favorites`}>
+                        <Ionicons name="heart" color={theme.icon} size={22} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            ))}
+            {cafes.length > 0 && (
+              <View style={styles.section}>
+                <Text style={styles.heading}>Cafés</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {cafes.map(({ location }) => (
+                    <View key={location.id} style={styles.card}>
+                      <Pressable onPress={() => navigation.navigate("CafeDetails", { locationId: location.id })}
+                        accessibilityRole="button" accessibilityLabel={`View ${location.name}`}>
+                        <CafeDrinkImage uri={location.imageUrl} style={styles.photo} label={`${location.name} photo`} />
+                        <Text style={styles.cardTitle}>{location.name}</Text>
+                        <Text style={styles.subtitle}>{location.address || "Address unavailable"}</Text>
+                      </Pressable>
+                      <Pressable style={styles.saveButton} onPress={() => { void removeCafe(location.id); }}
+                        disabled={loading || !!error || pendingCafeIds.includes(location.id)} accessibilityRole="button"
+                        accessibilityLabel={`Remove ${location.name} from favorites`}>
+                        <Ionicons name="heart" color={theme.icon} size={22} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </>
         )}
-        
-        />
-      </>
-      )}
-      
-      {juiceDrinks.length > 0 && (
-        <>
-       <Text style={[styles.sectionTitle, {color: theme.text}]}>Juice</Text>
-      <FlatList 
-        data={juiceDrinks}
-        keyExtractor={(item) => String(item.id)}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        renderItem={({item}) => (
-          <Pressable onPress={() => navigation.navigate("DrinkDetails", {drinkId: item.id})}>
-           <View style={styles.card}>
-            <View style={styles.imageContainer}>
-              <View style={styles.imagePlaceholder} />
-               <Pressable
-                style={styles.favButton}
-                onPress={() => toggleFavorite(item)}>
-              <Ionicons
-                name= "heart"
-                size={18}
-                color="#EF4444"
-                />
-                </Pressable>
-                </View>
-              <Text style={[styles.name, {color: theme.text}]}>{item.name}</Text>
-            </View>
-          </Pressable>
-        )}
-        />
-        </>
-      )}
-    
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 16, 
-    paddingHorizontal: 16,
-  },
-  favTitle:
-  {
-    fontSize: 30,
-    fontWeight: "800",
-    marginBottom: 8,
-  },
-  sectionTitle:
-  {
-    fontSize: 20,
-    fontWeight: "700",
-    marginTop: 16,
-    marginBottom: 10,
-  },
-  card:
-  {
-    width: 120,
-    marginRight: 10,
-  },
-  imagePlaceholder:
-  {
-    width: "100%",
-    height: 100,
-    borderRadius: 12,
-    backgroundColor: "#E5E7EB",
-    marginBottom: 6,
-  },
-  imageContainer:
-  {
-    position: "relative",
-    width: "100%",
-    height: 100,
-    borderRadius: 12,
-    backgroundColor: "#E5E7EB",
-  },
-  name:
-  {
-    fontSize: 12, 
-    fontWeight: "500",
-  },
-  favButton:
-  {
-    position: "absolute",
-    top: 3,
-    right: 8,
-    padding: 6,
-    borderRadius: 20,
-  },
-
+const createStyles = (theme: Theme) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: theme.background },
+  content: { paddingHorizontal: 20, paddingTop: 18, paddingBottom: 120 },
+  title: { color: theme.text, fontSize: 30, fontWeight: "800", marginBottom: 20 },
+  section: { marginBottom: 22 },
+  heading: { color: theme.text, fontSize: 20, fontWeight: "700", marginBottom: 12 },
+  card: { width: 150, marginRight: 16, position: "relative" },
+  photo: { width: 150, height: 120, borderRadius: 12, backgroundColor: theme.band },
+  cardTitle: { color: theme.text, fontSize: 15, fontWeight: "700", marginTop: 8 },
+  subtitle: { color: theme.subtext, fontSize: 13, marginTop: 3 },
+  saveButton: { position: "absolute", top: 6, right: 6, backgroundColor: theme.chip,
+    borderRadius: 20, padding: 7 },
+  messageArea: { paddingVertical: 12, gap: 8 },
+  message: { color: theme.subtext, fontSize: 16, lineHeight: 23 },
+  action: { color: theme.icon, fontSize: 16, fontWeight: "700", paddingVertical: 8 },
 });

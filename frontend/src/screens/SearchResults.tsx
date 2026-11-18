@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -24,6 +25,8 @@ import { useTheme } from "../theme/ThemeProvider";
 import type { Theme } from "../theme/ThemeProvider";
 import type { Drink, Filters } from "../types";
 import { getDrinks } from "../services/drinks";
+import { useAuth } from "../auth/AuthContext";
+import { useFavorites } from "../favorites/FavoritesContext";
 import {
   DEFAULT_FILTERS,
   applyFilters,
@@ -57,6 +60,8 @@ function SearchResultsContent({
   const navigation = useNavigation<any>();
   const { theme } = useTheme();
   const styles = useMemo(() => makeStyles(theme), [theme]);
+  const { status, token } = useAuth();
+  const { drinks: favoriteDrinks, loading: favoritesLoading, error: favoritesError, pendingDrinkIds, toggleDrink } = useFavorites();
 
   const [query, setQuery] = useState(initialQuery);
   const [filters, setFilters] =
@@ -72,7 +77,6 @@ function SearchResultsContent({
   const [error, setError] = useState<string | null>(null);
   const [retry, setRetry] = useState(0);
   const [filterVisible, setFilterVisible] = useState(false);
-  const [saved, setSaved] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     let active = true;
@@ -156,18 +160,18 @@ function SearchResultsContent({
     });
   };
 
-  const toggleSaved = (id: number) => {
-    setSaved((current) => {
-      const next = new Set(current);
-
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-
-      return next;
-    });
+  const toggleSaved = async (id: number) => {
+    if (status !== "signedIn" || !token) {
+      Alert.alert("Log in to save drinks", "Sign in from Profile to keep your favorites.");
+      return;
+    }
+    if (favoritesLoading) return;
+    if (favoritesError) {
+      Alert.alert("Favorites unavailable", "Open Favorites and try loading them again.");
+      return;
+    }
+    try { await toggleDrink(id); }
+    catch { Alert.alert("Unable to update favorite", "Please try again."); }
   };
 
   const header = (
@@ -320,7 +324,7 @@ function SearchResultsContent({
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         renderItem={({ item }) => {
-          const isSaved = saved.has(item.id);
+          const isSaved = favoriteDrinks.some(favorite => favorite.drink?.id === item.id);
           const displayedSize =
             item.sizes.find(
               (size) =>
@@ -366,12 +370,13 @@ function SearchResultsContent({
 
                 <Pressable
                   style={styles.saveButton}
-                  onPress={() => toggleSaved(item.id)}
+                  onPress={() => { void toggleSaved(item.id); }}
+                  disabled={pendingDrinkIds.includes(item.id) || (status === "signedIn" && favoritesLoading)}
                   accessibilityRole="button"
                   accessibilityLabel={
                     isSaved
-                      ? "Remove temporary bookmark"
-                      : "Bookmark for this session"
+                      ? "Remove drink from favorites"
+                      : "Save drink to favorites"
                   }
                   accessibilityState={{
                     selected: isSaved,

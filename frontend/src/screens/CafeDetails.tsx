@@ -14,6 +14,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useNavigation, useRoute, type RouteProp } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { isAxiosError } from "axios";
+import { useAuth } from "../auth/AuthContext";
+import { useFavorites } from "../favorites/FavoritesContext";
 
 import MapPreview from "../components/MapPreview";
 import CafeDrinkImage from "../components/CafeDrinkImage";
@@ -32,6 +34,23 @@ export default function CafeDetails() {
     const { theme } = useTheme();
     const styles = useMemo(() => makeStyles(theme), [theme]);
     const locationId = route.params?.locationId;
+    const { status, token } = useAuth();
+    const { cafes: favoriteCafes, loading: favoritesLoading, error: favoritesError, pendingCafeIds, toggleCafe } = useFavorites();
+    const isSaved = favoriteCafes.some(item => item.locationId === locationId);
+
+    async function onFavoritePress() {
+        if (status !== "signedIn" || !token) {
+            Alert.alert("Log in to save cafés", "Sign in from Profile to keep your favorites.");
+            return;
+        }
+        if (favoritesLoading) return;
+        if (favoritesError) {
+            Alert.alert("Favorites unavailable", "Open Favorites and try loading them again.");
+            return;
+        }
+        try { await toggleCafe(locationId); }
+        catch { Alert.alert("Unable to update favorite", "Please try again."); }
+    }
 
     const [cafe, setCafe] = useState<Location | null>(null);
     const [drinks, setDrinks] = useState<Drink[]>([]);
@@ -130,7 +149,15 @@ export default function CafeDetails() {
                 ) : cafe ? (
                     <>
                         <CafeDrinkImage uri={cafe.imageUrl} style={styles.photo} label={`${cafe.name} café photo`} />
-                        <Text style={styles.title}>{cafe.name}</Text>
+                        <View style={styles.titleRow}>
+                            <Text style={styles.title}>{cafe.name}</Text>
+                            <Pressable onPress={() => { void onFavoritePress(); }}
+                                disabled={pendingCafeIds.includes(locationId) || (status === "signedIn" && favoritesLoading)}
+                                style={styles.saveButton} accessibilityRole="button"
+                                accessibilityLabel={isSaved ? "Remove café from favorites" : "Save café to favorites"}>
+                                <Ionicons name={isSaved ? "heart" : "heart-outline"} size={24} color={theme.icon} />
+                            </Pressable>
+                        </View>
                         <Text style={styles.address}>{cafe.address || "Address not available"}</Text>
                         {miles !== null && (
                             <Text style={styles.distance}>{miles.toFixed(1)} mi from CSUN</Text>
@@ -202,6 +229,8 @@ const makeStyles = (t: Theme) => StyleSheet.create({
     },
     photo: { width: "100%", aspectRatio: 1, backgroundColor: t.band, borderRadius: 8 },
     title: { color: t.text, fontSize: 24, fontWeight: "700", marginTop: 16 },
+    titleRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12 },
+    saveButton: { backgroundColor: t.chip, borderRadius: 24, padding: 10, marginTop: 16 },
     address: { color: t.subtext, fontSize: 14, lineHeight: 21, marginTop: 5 },
     distance: {
         alignSelf: "flex-start", color: t.chipText, backgroundColor: t.chip,

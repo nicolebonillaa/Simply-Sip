@@ -13,6 +13,7 @@ import { useTheme, type Theme } from "../theme/ThemeProvider";
 import { useNavigation } from "@react-navigation/native";
 
 import { useAuth } from "../auth/AuthContext";
+import { useFavorites } from "../favorites/FavoritesContext";
 
 const ProfilePage = () => {
   const navigation = useNavigation();
@@ -21,30 +22,8 @@ const ProfilePage = () => {
   const styles = createStyles(theme);
 
   const { status, user } = useAuth();
+  const { drinks: favoriteDrinks, cafes: favoriteCafes } = useFavorites();
   const isSignedIn = status === "signedIn" && !!user;
-
-  const mockFavorites = [
-    {
-      id: "1",
-      name: "Iced Latte",
-      location: "Matador Bookstore Cafe",
-    },
-    {
-      id: "2",
-      name: "Matcha Latte",
-      location: "Campus Cafe",
-    },
-    {
-      id: "3",
-      name: "Strawberry Smoothie",
-      location: "Juice Bar",
-    },
-    {
-      id: "4",
-      name: "Cold Brew",
-      location: "Local Coffee Shop",
-    },
-  ];
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -104,13 +83,25 @@ const ProfilePage = () => {
           {/* Favorites */}
           <Text style={styles.sectionTitle}>My Favorites</Text>
 
-          {mockFavorites.map((drink) => (
-            <View key={drink.id} style={styles.favoriteItem}>
+          {!favoriteDrinks.length && !favoriteCafes.length && (
+            <Text style={styles.location}>No favorites saved yet.</Text>
+          )}
+          {favoriteDrinks.map(({ drink }) => (
+            <View key={`drink-${drink.id}`} style={styles.favoriteItem}>
               <Feather name="heart" size={20} color={theme.icon} />
 
               <View style={styles.favoriteInfo}>
                 <Text style={styles.drinkName}>{drink.name}</Text>
-                <Text style={styles.location}>{drink.location}</Text>
+                <Text style={styles.location}>{drink.location?.name || "Café unavailable"}</Text>
+              </View>
+            </View>
+          ))}
+          {favoriteCafes.map(({ location }) => (
+            <View key={`cafe-${location.id}`} style={styles.favoriteItem}>
+              <Feather name="heart" size={20} color={theme.icon} />
+              <View style={styles.favoriteInfo}>
+                <Text style={styles.drinkName}>{location.name}</Text>
+                <Text style={styles.location}>{location.address || "Address unavailable"}</Text>
               </View>
             </View>
           ))}
