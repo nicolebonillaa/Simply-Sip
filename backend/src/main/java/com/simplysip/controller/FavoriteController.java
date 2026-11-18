@@ -61,12 +61,13 @@ public class FavoriteController {
      * Saves a favorite for a user and drink. Returns 404 if either id is missing and 409 if the pair already exists.
      */
     @PostMapping
-    public ResponseEntity<FavoriteResponse> create(@Valid @RequestBody CreateFavoriteRequest request) {
+    public ResponseEntity<FavoriteResponse> create(@Valid @RequestBody CreateFavoriteRequest request, Authentication authentication) {
+        User user = currentUser(authentication);
         FavoriteResponse created = new FavoriteResponse(
-                favoriteService.create(request.getUserId(), request.getDrinkId()));
+                favoriteService.create(user.getId(), request.getDrinkId()));
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{userId}/{drinkId}")
-                .buildAndExpand(request.getUserId(), request.getDrinkId())
+                .buildAndExpand(user.getId(), request.getDrinkId())
                 .toUri();
         return ResponseEntity.created(location).body(created);
     }
