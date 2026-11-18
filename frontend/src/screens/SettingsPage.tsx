@@ -92,6 +92,15 @@ const SettingsPage = () => {
 
         {isSignedIn && (
           <SettingItem
+            icon="sliders"
+            title="Dietary & Allergens"
+            subtitle="Saved diets and allergens to avoid"
+            onPress={() => navigation.navigate("DietaryPreferences" as never)}
+          />
+      )}
+
+        {isSignedIn && (
+          <SettingItem
             icon="bell"
             title="Notifications"
             subtitle="Manage notification preferences"

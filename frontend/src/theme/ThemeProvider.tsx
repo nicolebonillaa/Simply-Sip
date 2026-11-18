@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { useColorScheme } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Vintage Garden palette
 export const palette = {
@@ -52,6 +59,18 @@ export type ThemeMode = "system" | "light" | "dark";
 export type LightTabIcons = "mocha" | "pink";
 export type DarkTabIcons = "sand" | "pink";
 
+const STORAGE_KEY = "appearance_settings";
+
+type SavedAppearance = {
+  mode: ThemeMode;
+  lightTabIcons: LightTabIcons;
+  darkTabIcons: DarkTabIcons;
+};
+
+const MODES: ThemeMode[] = ["system", "light", "dark"];
+const LIGHT_ICONS: LightTabIcons[] = ["mocha", "pink"];
+const DARK_ICONS: DarkTabIcons[] = ["sand", "pink"];
+
 interface ThemeContextValue {
   theme: Theme;
   isDark: boolean;
@@ -79,6 +98,41 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>("system");
   const [lightTabIcons, setLightTabIcons] = useState<LightTabIcons>("mocha");
   const [darkTabIcons, setDarkTabIcons] = useState<DarkTabIcons>("sand");
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((raw) => {
+        if (!active || !raw) return;
+        const saved: Partial<SavedAppearance> = JSON.parse(raw);
+        if (saved.mode && MODES.includes(saved.mode)) setMode(saved.mode);
+        if (saved.lightTabIcons && LIGHT_ICONS.includes(saved.lightTabIcons)) {
+          setLightTabIcons(saved.lightTabIcons);
+        }
+        if (saved.darkTabIcons && DARK_ICONS.includes(saved.darkTabIcons)) {
+          setDarkTabIcons(saved.darkTabIcons);
+        }
+      })
+      .catch(() => {
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    const next: SavedAppearance = { mode, lightTabIcons, darkTabIcons };
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next)).catch(() => {
+    });
+  }, [loaded, mode, lightTabIcons, darkTabIcons]);
 
   const value = useMemo<ThemeContextValue>(() => {
     const isDark = mode === "system" ? systemScheme === "dark" : mode === "dark";
@@ -100,8 +154,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [mode, systemScheme, lightTabIcons, darkTabIcons]);
 
+  if (!loaded) return null;
+
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
 export const useTheme = () => useContext(ThemeContext);
-

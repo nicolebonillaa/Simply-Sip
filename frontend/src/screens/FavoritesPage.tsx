@@ -14,7 +14,17 @@ export default function FavoritesPage() {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { status, token } = useAuth();
-  const { drinks, cafes, loading, error, pendingDrinkIds, pendingCafeIds, refresh, toggleDrink, toggleCafe } = useFavorites();
+  const {
+    drinks,
+    cafes,
+    loading,
+    error,
+    pendingDrinkIds,
+    pendingCafeIds,
+    refresh,
+    toggleDrink,
+    toggleCafe,
+  } = useFavorites();
 
   useFocusEffect(useCallback(() => {
     if (status === "signedIn" && token) void refresh();
@@ -34,25 +44,49 @@ export default function FavoritesPage() {
     try { await toggleDrink(id); }
     catch { Alert.alert("Unable to remove drink", "Please try again."); }
   };
+
   const removeCafe = async (id: number) => {
     try { await toggleCafe(id); }
     catch { Alert.alert("Unable to remove café", "Please try again."); }
   };
 
+  const isGuest = status !== "loading" && (status !== "signedIn" || !token);
+
   return (
     <SafeAreaView style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          isGuest && styles.guestContent,
+        ]}
+      >
         <Text style={styles.title}>Favorites</Text>
+
         {status === "loading" || (status === "signedIn" && loading && !drinks.length && !cafes.length) ? (
           <ActivityIndicator color={theme.icon} accessibilityLabel="Loading favorites" />
-        ) : status !== "signedIn" || !token ? (
-          <View style={styles.messageArea}>
-            <Text style={styles.message}>Log in to save your favorite drinks and cafés.</Text>
-            <Pressable onPress={() => navigation.navigate("Login")} accessibilityRole="button">
-              <Text style={styles.action}>Log In</Text>
+        ) : isGuest ? (
+          <View style={styles.guestArea}>
+            <Ionicons name="heart-outline" size={48} color={theme.icon} />
+
+            <Text style={styles.guestHeading}>Keep your favorites close</Text>
+            <Text style={styles.guestMessage}>
+              Log in to save the drinks and cafés you love.
+            </Text>
+
+            <Pressable
+              style={styles.guestPrimaryButton}
+              onPress={() => navigation.navigate("Login")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.guestPrimaryText}>Log In</Text>
             </Pressable>
-            <Pressable onPress={() => navigation.navigate("Register")} accessibilityRole="button">
-              <Text style={styles.action}>Create Account</Text>
+
+            <Pressable
+              style={styles.guestSecondaryButton}
+              onPress={() => navigation.navigate("Register")}
+              accessibilityRole="button"
+            >
+              <Text style={styles.guestSecondaryText}>Create Account</Text>
             </Pressable>
           </View>
         ) : (
@@ -65,24 +99,39 @@ export default function FavoritesPage() {
                 </Pressable>
               </View>
             )}
+
             {!loading && !error && !drinks.length && !cafes.length && (
               <Text style={styles.message}>No favorites yet. Save a drink or café to see it here.</Text>
             )}
+
             {groups.map(([category, items]) => (
               <View key={category} style={styles.section}>
                 <Text style={styles.heading}>{category}</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {items.map(({ drink }) => (
                     <View key={drink.id} style={styles.card}>
-                      <Pressable onPress={() => navigation.navigate("DrinkDetails", { drinkId: drink.id })}
-                        accessibilityRole="button" accessibilityLabel={`View ${drink.name}`}>
-                        <CafeDrinkImage uri={drink.imageUrl} style={styles.photo} label={`${drink.name} photo`} />
+                      <Pressable
+                        onPress={() => navigation.navigate("DrinkDetails", { drinkId: drink.id })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${drink.name}`}
+                      >
+                        <CafeDrinkImage
+                          uri={drink.imageUrl}
+                          style={styles.photo}
+                          label={`${drink.name} photo`}
+                        />
                         <Text style={styles.cardTitle}>{drink.name}</Text>
-                        <Text style={styles.subtitle}>{drink.location?.name || "Café unavailable"}</Text>
+                        <Text style={styles.subtitle}>
+                          {drink.location?.name || "Café unavailable"}
+                        </Text>
                       </Pressable>
-                      <Pressable style={styles.saveButton} onPress={() => { void removeDrink(drink.id); }}
-                        disabled={loading || !!error || pendingDrinkIds.includes(drink.id)} accessibilityRole="button"
-                        accessibilityLabel={`Remove ${drink.name} from favorites`}>
+                      <Pressable
+                        style={styles.saveButton}
+                        onPress={() => { void removeDrink(drink.id); }}
+                        disabled={loading || !!error || pendingDrinkIds.includes(drink.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${drink.name} from favorites`}
+                      >
                         <Ionicons name="heart" color={theme.icon} size={22} />
                       </Pressable>
                     </View>
@@ -90,21 +139,35 @@ export default function FavoritesPage() {
                 </ScrollView>
               </View>
             ))}
+
             {cafes.length > 0 && (
               <View style={styles.section}>
                 <Text style={styles.heading}>Cafés</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                   {cafes.map(({ location }) => (
                     <View key={location.id} style={styles.card}>
-                      <Pressable onPress={() => navigation.navigate("CafeDetails", { locationId: location.id })}
-                        accessibilityRole="button" accessibilityLabel={`View ${location.name}`}>
-                        <CafeDrinkImage uri={location.imageUrl} style={styles.photo} label={`${location.name} photo`} />
+                      <Pressable
+                        onPress={() => navigation.navigate("CafeDetails", { locationId: location.id })}
+                        accessibilityRole="button"
+                        accessibilityLabel={`View ${location.name}`}
+                      >
+                        <CafeDrinkImage
+                          uri={location.imageUrl}
+                          style={styles.photo}
+                          label={`${location.name} photo`}
+                        />
                         <Text style={styles.cardTitle}>{location.name}</Text>
-                        <Text style={styles.subtitle}>{location.address || "Address unavailable"}</Text>
+                        <Text style={styles.subtitle}>
+                          {location.address || "Address unavailable"}
+                        </Text>
                       </Pressable>
-                      <Pressable style={styles.saveButton} onPress={() => { void removeCafe(location.id); }}
-                        disabled={loading || !!error || pendingCafeIds.includes(location.id)} accessibilityRole="button"
-                        accessibilityLabel={`Remove ${location.name} from favorites`}>
+                      <Pressable
+                        style={styles.saveButton}
+                        onPress={() => { void removeCafe(location.id); }}
+                        disabled={loading || !!error || pendingCafeIds.includes(location.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Remove ${location.name} from favorites`}
+                      >
                         <Ionicons name="heart" color={theme.icon} size={22} />
                       </Pressable>
                     </View>
@@ -129,9 +192,65 @@ const createStyles = (theme: Theme) => StyleSheet.create({
   photo: { width: 150, height: 120, borderRadius: 12, backgroundColor: theme.band },
   cardTitle: { color: theme.text, fontSize: 15, fontWeight: "700", marginTop: 8 },
   subtitle: { color: theme.subtext, fontSize: 13, marginTop: 3 },
-  saveButton: { position: "absolute", top: 6, right: 6, backgroundColor: theme.chip,
-    borderRadius: 20, padding: 7 },
+  saveButton: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    backgroundColor: theme.chip,
+    borderRadius: 20,
+    padding: 7,
+  },
   messageArea: { paddingVertical: 12, gap: 8 },
   message: { color: theme.subtext, fontSize: 16, lineHeight: 23 },
   action: { color: theme.icon, fontSize: 16, fontWeight: "700", paddingVertical: 8 },
+
+  guestContent: { flexGrow: 1 },
+  guestArea: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingBottom: 50,
+  },
+  guestHeading: {
+    color: theme.text,
+    fontSize: 23,
+    fontWeight: "700",
+    textAlign: "center",
+    marginTop: 18,
+  },
+  guestMessage: {
+    color: theme.subtext,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
+    marginTop: 10,
+    marginBottom: 28,
+    paddingHorizontal: 18,
+  },
+  guestPrimaryButton: {
+    width: "100%",
+    backgroundColor: theme.button,
+    borderRadius: 12,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  guestPrimaryText: {
+    color: theme.buttonText,
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  guestSecondaryButton: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: theme.icon,
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  guestSecondaryText: {
+    color: theme.icon,
+    fontSize: 17,
+    fontWeight: "700",
+  },
 });
