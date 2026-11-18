@@ -16,6 +16,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 import MapPreview from "../components/MapPreview";
+import CafeDrinkImage from "../components/CafeDrinkImage";
 import FilterModal from "./FilterModal";
 import { CSUN, distanceInMiles } from "../data/mapData";
 import type { MapSpot } from "../data/mapData";
@@ -356,12 +357,12 @@ function SearchResultsContent({
 
           return (
             <View style={styles.card}>
-              <View style={styles.photo}>
-                <Ionicons
-                  name="cafe-outline"
-                  size={34}
-                  color={theme.subtext}
-                />
+              <CafeDrinkImage
+                uri={item.imageUrl}
+                style={styles.photo}
+                label={`${item.name} photo`}
+                fallback={<Ionicons name="cafe-outline" size={34} color={theme.subtext} />}
+              >
 
                 <Pressable
                   style={styles.saveButton}
@@ -386,7 +387,7 @@ function SearchResultsContent({
                     color={theme.icon}
                   />
                 </Pressable>
-              </View>
+              </CafeDrinkImage>
 
               <Pressable
                 onPress={() => navigation.navigate("DrinkDetails", { drinkId: item.id })}

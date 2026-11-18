@@ -6,6 +6,7 @@ import {
     ActivityIndicator, Alert, Linking, Platform, Pressable,
     ScrollView, StyleSheet, Text, TextInput, View
 } from "react-native";
+import CafeDrinkImage from "../components/CafeDrinkImage";
 
 import { Theme, useTheme } from "../theme/ThemeProvider";
 import { useRoute, useNavigation, type RouteProp } from "@react-navigation/native";
@@ -16,6 +17,14 @@ import { CSUN, distanceInMiles } from "../data/mapData";
 import { getDrinkById } from "../services/drinks";
 import type { Drink } from "../types";
 
+const formatNutrition = (value: number | null | undefined) =>
+{
+    if (value == null || !Number.isFinite(value) ||value < 0)
+    {
+        return "Not Provided";
+    }
+    return value;
+};
 type DrinkDetailsRoute = RouteProp<{ DrinkDetails: { drinkId: number } }, "DrinkDetails">;
 type DraftReview = { rating: number; comment: string };
 type Review = DraftReview & { id: string; name: string; date: string; order: number };
@@ -228,9 +237,10 @@ export default function DrinkDetails() {
                     </View>
                 ) : (
                     <View style={styles.card}>
-                        <View
+                        <CafeDrinkImage
+                            uri={pressedDrink.imageUrl}
                             style={styles.imagePlaceholder}
-                            accessibilityLabel="Drink photo unavailable"
+                            label={`${pressedDrink.name} photo`}
                         />
 
                         <View style={styles.titleRow}>

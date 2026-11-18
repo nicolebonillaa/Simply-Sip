@@ -16,6 +16,8 @@ import LoginPage from "../screens/LoginPage";
 import SettingsPage from "../screens/SettingsPage";
 import AppearancePage from "../screens/AppearancePage";
 import AboutPage from "../screens/AboutPage";
+import AccountInformation from "../screens/AccountInformation";
+import ChangePassword from "../screens/ChangePassword";
 
 const RootStack = createNativeStackNavigator();
 
@@ -47,6 +49,8 @@ export default function RootNavigator() {
         <RootStack.Screen name="Settings" component={SettingsPage} />
         <RootStack.Screen name="Appearance" component={AppearancePage} />
         <RootStack.Screen name="About" component={AboutPage} />
+        <RootStack.Screen name="AccountInformation" component={AccountInformation} />
+        <RootStack.Screen name="ChangePassword" component={ChangePassword} />
       </RootStack.Navigator>
     </NavigationContainer>
   );

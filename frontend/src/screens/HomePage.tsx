@@ -24,6 +24,7 @@ import {
 } from "../utils/filters";
 import { useTheme } from "../theme/ThemeProvider";
 import type { Theme } from "../theme/ThemeProvider";
+import CafeDrinkImage from "../components/CafeDrinkImage";
 
 export default function HomePage() {
   const navigation = useNavigation<any>();
@@ -192,10 +193,10 @@ export default function HomePage() {
               accessibilityRole="button"
               accessibilityLabel={`View ${item.name} details`}
             >
-              <View style={styles.imagePlaceholder} />
+              <CafeDrinkImage uri={item.imageUrl} style={styles.imagePlaceholder} label={`${item.name} photo`} />
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.place}>
-                {item.location?.name ?? "Café unavailable"}
+                {item.location?.name ?? item.place ?? "Café unavailable"}
               </Text>
             </Pressable>
           )}
@@ -224,7 +225,7 @@ export default function HomePage() {
               accessibilityRole="button"
               accessibilityLabel={`View ${item.name} café details`}
             >
-              <View style={styles.imagePlaceholder} />
+              <CafeDrinkImage uri={item.imageUrl} style={styles.imagePlaceholder} label={`${item.name} café photo`} />
               <Text style={styles.name}>{item.name}</Text>
             </Pressable>
           )}

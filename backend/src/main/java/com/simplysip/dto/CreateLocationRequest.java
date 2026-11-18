@@ -30,4 +30,6 @@ public class CreateLocationRequest {
     @DecimalMin("-180.0")
     @DecimalMax("180.0")
     private Double longitude;
+
+    private String imageUrl;
 }

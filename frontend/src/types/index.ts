@@ -6,6 +6,7 @@ export interface Allergen {
 export interface Drink {
   id: number;
   name: string;
+  imageUrl?: string | null;
   category: string;
   tags: string | null;
   price?: number | null;
@@ -45,6 +46,7 @@ export interface DrinkParams {
 export interface Location {
   id: number;
   name: string;
+  imageUrl?: string | null;
   address: string;
   cafeName: string | null;
   locationName: string | null;

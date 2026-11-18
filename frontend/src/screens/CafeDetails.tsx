@@ -16,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { isAxiosError } from "axios";
 
 import MapPreview from "../components/MapPreview";
+import CafeDrinkImage from "../components/CafeDrinkImage";
 import { CSUN, distanceInMiles } from "../data/mapData";
 import type { MapSpot } from "../data/mapData";
 import { getDrinks } from "../services/drinks";
@@ -128,7 +129,7 @@ export default function CafeDetails() {
                     </View>
                 ) : cafe ? (
                     <>
-                        <View style={styles.photo} accessibilityLabel="Café photo unavailable" />
+                        <CafeDrinkImage uri={cafe.imageUrl} style={styles.photo} label={`${cafe.name} café photo`} />
                         <Text style={styles.title}>{cafe.name}</Text>
                         <Text style={styles.address}>{cafe.address || "Address not available"}</Text>
                         {miles !== null && (

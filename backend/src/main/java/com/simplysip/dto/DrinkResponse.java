@@ -3,7 +3,6 @@ package com.simplysip.dto;
 import com.simplysip.model.Allergen;
 import com.simplysip.model.Drink;
 import com.simplysip.model.DrinkSize;
-import com.simplysip.model.Location;
 import com.simplysip.model.NutritionFacts;
 import lombok.Getter;
 
@@ -20,9 +19,10 @@ public class DrinkResponse {
     private final String category;
     private final String description;
     private final String sourceUrl;
+    private final String imageUrl;
     private final boolean allergensKnown;
     private final List<String> allergens;
-    private final LocationView location;
+    private final LocationResponse location;
     private final List<DrinkSizeView> sizes;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
@@ -33,11 +33,12 @@ public class DrinkResponse {
         this.category = drink.getCategory();
         this.description = drink.getDescription();
         this.sourceUrl = drink.getSourceUrl();
+        this.imageUrl = drink.getImageUrl();
         this.allergensKnown = drink.isAllergensKnown();
         this.allergens = drink.getAllergens() == null
                 ? List.of()
                 : drink.getAllergens().stream().map(Allergen::getName).sorted().toList();
-        this.location = drink.getLocation() == null ? null : new LocationView(drink.getLocation());
+        this.location = drink.getLocation() == null ? null : new LocationResponse(drink.getLocation());
         this.sizes = drink.getSizes() == null
                 ? List.of()
                 : drink.getSizes().stream()
@@ -46,35 +47,6 @@ public class DrinkResponse {
                         .toList();
         this.createdAt = drink.getCreatedAt();
         this.updatedAt = drink.getUpdatedAt();
-    }
-
-    @Getter
-    public static class LocationView {
-        private final Long id;
-        private final String cafeName;
-        private final String locationName;
-        private final String streetAddress;
-        private final String city;
-        private final String state;
-        private final String zip;
-        private final Double latitude;
-        private final Double longitude;
-        private final LocalDateTime createdAt;
-        private final LocalDateTime updatedAt;
-
-        public LocationView(Location location) {
-            this.id = location.getId();
-            this.cafeName = location.getCafeName();
-            this.locationName = location.getLocationName();
-            this.streetAddress = location.getStreetAddress();
-            this.city = location.getCity();
-            this.state = location.getState();
-            this.zip = location.getZip();
-            this.latitude = location.getLatitude();
-            this.longitude = location.getLongitude();
-            this.createdAt = location.getCreatedAt();
-            this.updatedAt = location.getUpdatedAt();
-        }
     }
 
     @Getter

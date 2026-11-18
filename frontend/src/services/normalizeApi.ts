@@ -1,7 +1,9 @@
 import type { Drink, DrinkSize, Location, NutritionFacts } from "../types";
+import api from "./api";
 
 export interface ApiLocation {
   id: number;
+  imageUrl?: string | null;
   cafeName: string | null;
   locationName: string | null;
   streetAddress: string | null;
@@ -37,6 +39,7 @@ interface ApiDrinkSize {
 export interface ApiDrink {
   id: number;
   name: string;
+  imageUrl?: string | null;
   category: string;
   description: string | null;
   sourceUrl: string | null;
@@ -50,12 +53,22 @@ export interface ApiDrink {
 
 const label = (value: string | null | undefined) => value?.trim() || "";
 
+// The API returns paths such as /images/boba.jpg, while React Native needs a full URL.
+export function resolveImageUrl(path: string | null | undefined): string | null {
+  const image = label(path);
+  if (!image) return null;
+  if (/^https?:\/\//i.test(image)) return image;
+  const base = (api.defaults.baseURL ?? "").replace(/\/+$/, "");
+  return base ? `${base}/${image.replace(/^\/+/, "")}` : null;
+}
+
 export function normalizeLocation(location: ApiLocation): Location {
   const cafeName = label(location.cafeName);
   const branchName = label(location.locationName);
 
   return {
     ...location,
+    imageUrl: resolveImageUrl(location.imageUrl),
     name: cafeName
       ? branchName && branchName.toLowerCase() !== cafeName.toLowerCase()
         ? `${cafeName} - ${branchName}`
@@ -107,6 +120,7 @@ export function normalizeDrink(drink: ApiDrink): Drink {
   return {
     id: drink.id,
     name: drink.name,
+    imageUrl: resolveImageUrl(drink.imageUrl),
     category: drink.category,
     tags: null,
     price: defaultSize?.price ?? null,

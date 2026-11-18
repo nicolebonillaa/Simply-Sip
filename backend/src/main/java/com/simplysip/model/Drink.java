@@ -21,7 +21,8 @@ import java.util.Set;
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_drinks_location_name",
                 columnNames = {"location_id", "name"}
-        )
+        ),
+        indexes = @Index(name = "idx_drinks_location_id", columnList = "location_id")
 )
 @Getter
 @Setter
@@ -42,6 +43,9 @@ public class Drink {
 
     @Column(name = "source_url")
     private String sourceUrl;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 
     @Column(name = "allergens_known", nullable = false)
     private boolean allergensKnown = false;
