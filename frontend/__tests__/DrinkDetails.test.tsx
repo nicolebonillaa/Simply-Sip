@@ -1,106 +1,88 @@
-
 import React from "react";
 import { render } from "@testing-library/react-native";
-import { useRoute, useNavigation } from "@react-navigation/native";
-
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { getDrinkById } from "../src/services/drinks";
 import DrinkDetails from "../src/screens/DrinkDetails";
 
 jest.mock("@react-navigation/native", () => ({
   useRoute: jest.fn(),
   useNavigation: jest.fn(),
 }));
-
-jest.mock("../src/fakeDrinks", () => ({
-  drinks: [
-    {
-      id: "101",
-      name: "Iced Coffee",
-      calories: 150,
-      sugar: 20,
-      allergens: "Milk",
-    },
-    {
-      id: "103",
-      name: "Nutrition Test Drink",
-      calories: null,
-      sugar: -10,
-      allergens: "None",
-    },
-  ],
-  stores: [],
+jest.mock("../src/services/drinks", () => ({ getDrinkById: jest.fn() }));
+jest.mock("../src/auth/AuthContext", () => ({
+  useAuth: () => ({ status: "signedOut", token: null }),
 }));
-
+jest.mock("../src/favorites/FavoritesContext", () => ({
+  useFavorites: () => ({ drinks: [], pendingDrinkIds: [], toggleDrink: jest.fn() }),
+}));
+jest.mock("../src/components/CafeDrinkImage", () => () => null);
 jest.mock("../src/theme/ThemeProvider", () => ({
   useTheme: () => ({
-    theme: { text: "#000000" },
+    theme: { background: "#fff", text: "#000", subtext: "#555", icon: "#a00", band: "#eee" },
   }),
 }));
+jest.mock("@expo/vector-icons", () => ({ Ionicons: () => null }));
 
-jest.mock("@expo/vector-icons", () => ({
-  Ionicons: () => null,
-}));
-
+const mockGetDrinkById = getDrinkById as jest.Mock;
 const mockUseRoute = useRoute as jest.Mock;
 const mockUseNavigation = useNavigation as jest.Mock;
-const mockGoBack = jest.fn();
 
-async function renderScreen(drinkId: string | number | null) {
-  mockUseRoute.mockReturnValue({
-    params: { drinkId },
-  });
+const drinkWithNutrition = (calories: number | null, sugar: number | null) => ({
+  id: 101,
+  name: "Iced Coffee",
+  category: "Coffee",
+  location: null,
+  imageUrl: null,
+  allergens: [],
+  sizes: [{
+    id: 1,
+    sizeName: "Medium",
+    ounces: 16,
+    price: 4.5,
+    nutritionFacts: { id: 1, calories, sugar, caffeine: 60 },
+  }],
+});
 
-  mockUseNavigation.mockReturnValue({
-    goBack: mockGoBack,
-  });
-
+async function renderScreen(drinkId: number | string) {
+  mockUseRoute.mockReturnValue({ params: { drinkId } });
+  mockUseNavigation.mockReturnValue({ goBack: jest.fn() });
   return await render(<DrinkDetails />);
 }
 
 describe("DrinkDetails screen", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
+  beforeEach(() => jest.clearAllMocks());
+
+  it("loads a drink by its numeric API ID", async () => {
+    mockGetDrinkById.mockResolvedValue(drinkWithNutrition(150, 20));
+    const screen = await renderScreen(101);
+    expect(await screen.findByText("Iced Coffee")).toBeTruthy();
+    expect(mockGetDrinkById).toHaveBeenCalledWith(101);
   });
 
-  describe("findDrinkById(drinkId)", () => {
-    it("TC01: finds a drink when numeric and string IDs match", async () => {
-      const { getByText } = await renderScreen(101);
-
-      expect(getByText("Iced Coffee")).toBeTruthy();
-    });
-
-    it("TC02: displays error when drink ID does not exist", async () => {
-      const { getByText } = await renderScreen(999);
-
-      expect(getByText("Drink not Found.")).toBeTruthy();
-
-      expect(
-        getByText("Back to Home Screen")
-      ).toBeTruthy();
-    });
+  it("shows not found for an invalid ID without calling the API", async () => {
+    const screen = await renderScreen("101");
+    expect(await screen.findByText("Drink not found.")).toBeTruthy();
+    expect(mockGetDrinkById).not.toHaveBeenCalled();
   });
 
-  describe("displayNutrition(drink)", () => {
-    it("TC03: displays valid calories and sugar", async () => {
-      const { getByText } = await renderScreen("101");
-
-      expect(getByText("Calories: 150 cal")).toBeTruthy();
-      expect(getByText("Sugar: 20 g")).toBeTruthy();
-    });
-    it("TC04: handles missing and negative nutrition values", async () => {
-    const { getByText, queryByText } = await renderScreen("103");
-
-    expect(
-      getByText("Calories: Not Provided cal")
-    ).toBeTruthy();
-
-    expect(
-      getByText("Sugar: Not Provided g")
-    ).toBeTruthy();
-
-    expect(
-      queryByText("Sugar: -10 g")
-    ).toBeNull();
+  it("shows not found when the API returns 404", async () => {
+    mockGetDrinkById.mockRejectedValue({ isAxiosError: true, response: { status: 404 } });
+    const screen = await renderScreen(999);
+    expect(await screen.findByText("Drink not found.")).toBeTruthy();
   });
-   
+
+  it("shows nutrition from the selected size", async () => {
+    mockGetDrinkById.mockResolvedValue(drinkWithNutrition(150, 20));
+    const screen = await renderScreen(101);
+    expect(await screen.findByText("150 cal")).toBeTruthy();
+    expect(screen.getByText("20 g")).toBeTruthy();
+  });
+
+  it("shows missing values instead of negative nutrition", async () => {
+    mockGetDrinkById.mockResolvedValue(drinkWithNutrition(null, -10));
+    const screen = await renderScreen(101);
+    expect(await screen.findByText("Iced Coffee")).toBeTruthy();
+    expect(screen.getAllByText("Not provided")).toHaveLength(2);
+    expect(screen.queryByText("-10 g")).toBeNull();
   });
 });

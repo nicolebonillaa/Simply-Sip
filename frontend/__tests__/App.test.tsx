@@ -75,6 +75,16 @@ jest.mock("../assets/mocha icons/mocha-profile-outline.svg", () => {
     default: MockSvg,
   };
 });
+
+ jest.mock("@react-native-async-storage/async-storage", () => ({
+  __esModule: true,
+  default: {
+    getItem: jest.fn(() => Promise.resolve(null)),
+    setItem: jest.fn(() => Promise.resolve()),
+    removeItem: jest.fn(() => Promise.resolve()),
+  },
+}));
+
 import App from "../App";
 
 test("renders correctly", async () => {

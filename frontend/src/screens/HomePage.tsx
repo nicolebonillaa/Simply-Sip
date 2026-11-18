@@ -196,7 +196,7 @@ export default function HomePage() {
               <CafeDrinkImage uri={item.imageUrl} style={styles.imagePlaceholder} label={`${item.name} photo`} />
               <Text style={styles.name}>{item.name}</Text>
               <Text style={styles.place}>
-                {item.location?.name ?? item.place ?? "Café unavailable"}
+                {item.location?.name || item.location?.cafeName || "Café unavailable"}
               </Text>
             </Pressable>
           )}
