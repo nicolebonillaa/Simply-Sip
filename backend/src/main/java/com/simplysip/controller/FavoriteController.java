@@ -106,6 +106,15 @@ public class FavoriteController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/drinks/{drinkId}")
+    public ResponseEntity<Void> deleteMine(@PathVariable Long drinkId, Authentication authentication) {
+        Long userId = currentUser(authentication).getId();
+        if (!favoriteService.delete(userId, drinkId)) {
+            throw new NotFoundException("Favorite not found for drink " + drinkId);
+        }
+        return ResponseEntity.noContent().build();
+    }
+
     private User currentUser(Authentication authentication) {
         return userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));

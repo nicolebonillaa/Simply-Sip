@@ -9,6 +9,7 @@ import com.simplysip.service.FavoriteService;
 import com.simplysip.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
@@ -73,8 +74,13 @@ public class UserController {
      * Returns favorites for a user. Missing user ids are 404.
      */
     @GetMapping("/{id}/favorites")
-    public List<FavoriteResponse> getFavorites(@PathVariable Long id) {
-        return favoriteService.findResponsesByUserId(id);
+    public ResponseEntity<List<FavoriteResponse>> getFavorites(@PathVariable Long id, Authentication authentication) {
+        User current = userService.findByEmail(authentication.getName())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        if (!current.getId().equals(id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(favoriteService.findResponsesByUserId(id));
     }
 
     @PutMapping("/{id}")
