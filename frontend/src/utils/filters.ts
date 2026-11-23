@@ -59,6 +59,7 @@ export const ALLERGEN_OPTIONS = [
 
 export const MILK_OPTIONS = [
   "Whole",
+  "2%",
   "Skim",
   "Oat",
   "Almond",

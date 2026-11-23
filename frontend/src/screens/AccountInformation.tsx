@@ -15,6 +15,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import CircleCropModal from "../components/CircleCropModal";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
+import { useAuth } from "../auth/AuthContext";
 import {
   deleteAccount,
   getAccount,
@@ -41,6 +42,7 @@ export default function AccountInformation() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const { token } = useAuth();
 
   const [profile, setProfile] = useState<AccountProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -55,11 +57,17 @@ export default function AccountInformation() {
     width: number;
     height: number;
   } | null>(null);
+  const [newPhotoUri, setNewPhotoUri] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      setLoadError("Log in to view your account information.");
+      setLoading(false);
+      return;
+    }
     let active = true;
 
-    getAccount()
+    getAccount(token)
       .then((account) => {
         if (!active) return;
         setProfile(account);
@@ -76,7 +84,7 @@ export default function AccountInformation() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [token]);
 
   const nameError = name.trim().length === 0 ? "Please enter your name." : null;
   const usernameError = USERNAME_PATTERN.test(username.trim())
@@ -90,19 +98,28 @@ export default function AccountInformation() {
 
   const dirty =
     profile !== null &&
-    (name.trim() !== profile.name || username.trim() !== profile.username);
+    (name.trim() !== profile.name ||
+      username.trim() !== profile.username ||
+      newPhotoUri !== null);
   const canSave = dirty && !nameError && !usernameError && !saving;
 
   const handleSave = async () => {
-    if (!canSave) return;
+    if (!canSave || !profile) return;
 
     setSaving(true);
     try {
+      let photoUri = profile.photoUri;
+      if (newPhotoUri) {
+        if (!token) throw new Error("Please log in again.");
+        const withPhoto = await updatePhoto(token, newPhotoUri);
+        photoUri = withPhoto.photoUri;
+        setNewPhotoUri(null);
+      }
       const updated = await updateAccount({
         name: name.trim(),
         username: username.trim(),
       });
-      setProfile(updated);
+      setProfile({ ...updated, photoUri });
       setName(updated.name);
       setUsername(updated.username);
       Alert.alert("Saved", "Your account information was updated.");
@@ -128,19 +145,11 @@ export default function AccountInformation() {
   };
 
   // Step 2: the person centered the photo in the circle and tapped Choose.
-  const handlePhotoCropped = async (uri: string) => {
+  // The photo is only previewed here; it uploads when they tap Save Changes.
+  const handlePhotoCropped = (uri: string) => {
     setPendingPhoto(null);
-
-    // Show the new photo right away.
-    setProfile((current) =>
-      current ? { ...current, photoUri: uri } : current,
-    );
-
-    try {
-      await updatePhoto(uri); // mock for now, real upload later
-    } catch (error) {
-      Alert.alert("Couldn't save photo", errorMessage(error));
-    }
+    setNewPhotoUri(uri);
+    setProfile((current) => (current ? { ...current, photoUri: uri } : current));
   };
 
   const confirmDelete = async () => {

@@ -22,6 +22,8 @@ public class DrinkResponse {
     private final String imageUrl;
     private final boolean allergensKnown;
     private final List<String> allergens;
+    private final List<String> tags;
+    private final List<String> milkTypes;
     private final LocationResponse location;
     private final List<DrinkSizeView> sizes;
     private final LocalDateTime createdAt;
@@ -38,6 +40,12 @@ public class DrinkResponse {
         this.allergens = drink.getAllergens() == null
                 ? List.of()
                 : drink.getAllergens().stream().map(Allergen::getName).sorted().toList();
+        this.tags = drink.getTags() == null 
+                ? List.of() 
+                : drink.getTags().stream().sorted().toList();
+        this.milkTypes = drink.getMilkTypes() == null 
+                ? List.of() :
+                 drink.getMilkTypes().stream().sorted().toList();
         this.location = drink.getLocation() == null ? null : new LocationResponse(drink.getLocation());
         this.sizes = drink.getSizes() == null
                 ? List.of()

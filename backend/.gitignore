@@ -3,3 +3,5 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 src/main/resources/application-local.properties
+# user-uploaded files (profile photos)
+uploads/

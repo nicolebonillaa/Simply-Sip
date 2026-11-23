@@ -12,6 +12,7 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { useTheme, type Theme } from "../theme/ThemeProvider";
+import { useAuth } from "../auth/AuthContext";
 import {
   changePassword,
   getAccount,
@@ -82,6 +83,7 @@ export default function ChangePassword() {
   const navigation = useNavigation();
   const { theme } = useTheme();
   const styles = createStyles(theme);
+  const { token } = useAuth();
 
   const [signInMethod, setSignInMethod] = useState<SignInMethod | null>(null);
   const [loading, setLoading] = useState(true);
@@ -93,9 +95,15 @@ export default function ChangePassword() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!token) {
+      // Not signed in: show the form anyway, as with a load failure.
+      setSignInMethod("password");
+      setLoading(false);
+      return;
+    }
     let active = true;
 
-    getAccount()
+    getAccount(token)
       .then((account) => {
         if (active) setSignInMethod(account.signInMethod);
       })
@@ -110,7 +118,7 @@ export default function ChangePassword() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [token]);
 
   const longEnough = newPassword.length >= MIN_LENGTH;
   const matches = newPassword.length > 0 && newPassword === confirmPassword;
