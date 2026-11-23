@@ -18,6 +18,7 @@ import { useAuth } from "../auth/AuthContext";
 import { useFavorites } from "../favorites/FavoritesContext";
 
 import MapPreview from "../components/MapPreview";
+import { openDirections } from "../utils/directions";
 import CafeDrinkImage from "../components/CafeDrinkImage";
 import { CSUN, distanceInMiles } from "../data/mapData";
 import type { MapSpot } from "../data/mapData";
@@ -112,19 +113,6 @@ export default function CafeDetails() {
     } : null;
     const miles = mapSpot ? distanceInMiles(CSUN, mapSpot) : null;
 
-    async function openDirections() {
-        if (!mapSpot) return;
-        const destination = `${mapSpot.latitude},${mapSpot.longitude}`;
-        const url = Platform.OS === "ios"
-            ? `http://maps.apple.com/?daddr=${destination}`
-            : `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-        try {
-            await Linking.openURL(url);
-        } catch {
-            Alert.alert("Directions unavailable", "Please try again later.");
-        }
-    }
-
     return (
         <SafeAreaView style={styles.screen}>
             <ScrollView contentContainerStyle={styles.content}>
@@ -209,7 +197,7 @@ export default function CafeDetails() {
                         </View>
 
                         {mapSpot && (
-                            <Pressable style={styles.directions} onPress={() => { void openDirections(); }}>
+                            <Pressable style={styles.directions} onPress={() => { void openDirections(cafe); }}>
                                 <Text style={styles.directionsText}>Get Directions</Text>
                             </Pressable>
                         )}

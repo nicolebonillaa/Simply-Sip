@@ -89,14 +89,11 @@ function Checkbox({
         ]}
       >
         {checked && (
-          <Text
-            style={[
-              styles.checkmark,
-              { color: t.buttonText },
-            ]}
-          >
-            ✔
-          </Text>
+          <Ionicons
+            name="checkmark"
+            size={18}
+            color={t.buttonText}
+          />
         )}
       </View>
     </Pressable>

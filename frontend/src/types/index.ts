@@ -72,6 +72,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  photoUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   favorites?: Favorite[];

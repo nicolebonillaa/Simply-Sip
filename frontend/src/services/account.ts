@@ -1,5 +1,8 @@
 // Mock account service for the Account Information and Change Password screens.
-
+import { isAxiosError } from "axios";
+import api from "./api";
+import { getCurrentUser } from "./users";
+import type { User } from "../types";
 export type SignInMethod = "password" | "google" | "apple";
 
 export interface AccountProfile {
@@ -32,16 +35,34 @@ let mockProfile: AccountProfile = {
 
 const delay = (ms = 500) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-export async function getAccount(): Promise<AccountProfile> {
-  if (USE_MOCK) {
-    await delay(300);
-    return { ...mockProfile };
-  }
+const photoUrlFor = (path: string | null | undefined) =>
+  path ? `${api.defaults.baseURL}${path}` : null;
 
-  // TODO real: get the logged-in user's token and call getCurrentUser(token) from
-  // services/users.ts, then map the result to AccountProfile. The backend does not
-  // return username, signInMethod, or photoUri yet.
-  throw new Error("Not connected to the backend yet.");
+// username and signInMethod come from the mock until the backend supports them.
+const toProfile = (me: User): AccountProfile => ({
+  ...mockProfile,
+  id: me.id,
+  name: me.name,
+  email: me.email,
+  photoUri: photoUrlFor(me.photoUrl),
+});
+
+function friendlyError(error: unknown, fallback: string): Error {
+  if (isAxiosError(error)) {
+    if (error.response) {
+      return new Error(error.response.data?.message ?? fallback);
+    }
+    return new Error("Can't reach the server. Check your connection and try again.");
+  }
+  return new Error(fallback);
+}
+
+export async function getAccount(token: string): Promise<AccountProfile> {
+  try {
+    return toProfile(await getCurrentUser(token));
+  } catch (error) {
+    throw friendlyError(error, "Couldn't load your account.");
+  }
 }
 
 export async function updateAccount(
@@ -63,17 +84,28 @@ export async function updateAccount(
 }
 
 export async function updatePhoto(
+  token: string,
   photoUri: string | null,
 ): Promise<AccountProfile> {
-  if (USE_MOCK) {
-    await delay(300);
-    mockProfile = { ...mockProfile, photoUri };
-    return { ...mockProfile };
+  const headers = { Authorization: `Bearer ${token}` };
+  try {
+    if (photoUri) {
+      const form = new FormData();
+      form.append("photo", {
+        uri: photoUri,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      } as unknown as Blob);
+      const { data } = await api.post<User>("/api/users/me/photo", form, {
+        headers: { ...headers, "Content-Type": "multipart/form-data" },
+      });
+      return toProfile(data);
+    }
+    const { data } = await api.delete<User>("/api/users/me/photo", { headers });
+    return toProfile(data);
+  } catch (error) {
+    throw friendlyError(error, "Couldn't save your photo.");
   }
-
-  // TODO real: send the image to the backend as multipart form data
-  // (for example POST /api/users/me/photo) and return the updated profile.
-  throw new Error("Not connected to the backend yet.");
 }
 
 export async function changePassword(

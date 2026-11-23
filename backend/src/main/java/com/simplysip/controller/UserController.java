@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
+import com.simplysip.service.ProfilePhotoService;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -23,14 +27,17 @@ public class UserController {
 
     private final UserService userService;
     private final FavoriteService favoriteService;
+    private final ProfilePhotoService profilePhotoService;
 
-    public UserController(UserService userService, FavoriteService favoriteService) {
+    public UserController(UserService userService, FavoriteService favoriteService, ProfilePhotoService profilePhotoService) {
         this.userService = userService;
         this.favoriteService = favoriteService;
+        this.profilePhotoService = profilePhotoService;
     }
 
     /**
-     * Creates a user from name, email, and password. The password is hashed before it is stored.
+     * Creates a user from name, email, and password. The password is hashed
+     * before it is stored.
      */
     @PostMapping
     public ResponseEntity<UserResponse> create(@Valid @RequestBody CreateUserRequest request) {
@@ -93,5 +100,20 @@ public class UserController {
                 .flatMap(current -> userService.update(id, user))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.status(403).build());
+    }
+
+    @PostMapping(value = "/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public UserResponse uploadPhoto(@RequestParam("photo") MultipartFile photo,
+            Authentication authentication) throws IOException {
+        User user = userService.findByEmail(authentication.getName())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        return new UserResponse(profilePhotoService.replacePhoto(user, photo));
+    }
+
+    @DeleteMapping("/me/photo")
+    public UserResponse removePhoto(Authentication authentication) {
+        User user = userService.findByEmail(authentication.getName())
+                .orElseThrow(() -> new NotFoundException("User not found"));
+        return new UserResponse(profilePhotoService.removePhoto(user));
     }
 }

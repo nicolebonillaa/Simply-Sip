@@ -18,6 +18,7 @@ import { getDrinkById } from "../services/drinks";
 import { useAuth } from "../auth/AuthContext";
 import { useFavorites } from "../favorites/FavoritesContext";
 import type { Drink } from "../types";
+import { openDirections } from "../utils/directions";
 
 const formatNutrition = (value: number | null | undefined, unit: string) =>
 {
@@ -26,6 +27,13 @@ const formatNutrition = (value: number | null | undefined, unit: string) =>
         return "Not provided";
     }
     return `${value} ${unit}`;
+};
+
+const formatSizeLabel = (sizeName: string, ounces?: number | null) => {
+    if (ounces == null) return sizeName;
+    // Skip the oz suffix if the name already includes it, e.g. "16 oz"
+    const alreadyHasOz = new RegExp(`\\b${ounces}\\s*oz\\b`, "i").test(sizeName);
+    return alreadyHasOz ? sizeName : `${sizeName} · ${ounces} oz`;
 };
 type DrinkDetailsRoute = RouteProp<{ DrinkDetails: { drinkId: number } }, "DrinkDetails">;
 type DraftReview = { rating: number; comment: string };
@@ -177,24 +185,6 @@ export default function DrinkDetails() {
                     : second.order - first.order
     );
 
-    async function openDirections() {
-        if (!location || !hasCoordinates) return;
-
-        const destination = `${location.latitude},${location.longitude}`;
-        const url = Platform.OS === "ios"
-            ? `http://maps.apple.com/?daddr=${destination}`
-            : `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
-
-        try {
-            await Linking.openURL(url);
-        } catch {
-            Alert.alert(
-                "Directions unavailable",
-                "Please try again later."
-            );
-        }
-    }
-
     function addReview() {
         if (!rating) {
             Alert.alert(
@@ -344,10 +334,7 @@ export default function DrinkDetails() {
                                                     styles.optionTextActive,
                                             ]}
                                         >
-                                            {size.sizeName}
-                                            {size.ounces != null
-                                                ? ` · ${size.ounces} oz`
-                                                : ""}
+                                         {formatSizeLabel(size.sizeName, size.ounces)}  
                                         </Text>
                                     </Pressable>
                                 ))}
@@ -771,7 +758,7 @@ export default function DrinkDetails() {
                             <Pressable
                                 style={styles.getDirButton}
                                 disabled={!hasCoordinates}
-                                onPress={() => { void openDirections(); }}
+                                onPress={() => { void openDirections(location); }}
                             >
                                 <Text style={styles.getDirButtonText}>
                                     Get Directions

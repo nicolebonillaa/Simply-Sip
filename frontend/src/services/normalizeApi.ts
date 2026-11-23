@@ -45,6 +45,8 @@ export interface ApiDrink {
   sourceUrl: string | null;
   allergensKnown: boolean;
   allergens: string[];
+  tags?: string[];
+  milkTypes?: string[];
   location: ApiLocation | null;
   sizes: ApiDrinkSize[];
   createdAt: string;
@@ -122,9 +124,9 @@ export function normalizeDrink(drink: ApiDrink): Drink {
     name: drink.name,
     imageUrl: resolveImageUrl(drink.imageUrl),
     category: drink.category,
-    tags: null,
+    tags: drink.tags?.length ? drink.tags.join(",") : null,
     price: defaultSize?.price ?? null,
-    milkTypes: [],
+    milkTypes: drink.milkTypes ?? [],
     allergensKnown: drink.allergensKnown,
     allergens: drink.allergens ?? [],
     location: drink.location ? normalizeLocation(drink.location) : null,

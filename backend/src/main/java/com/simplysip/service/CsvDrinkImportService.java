@@ -27,6 +27,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -186,6 +188,16 @@ public class CsvDrinkImportService {
         drink.setImageUrl(imageUrl);
         drink.setAllergensKnown(allergenParse.known);
         drink.setAllergens(new HashSet<>(allergenParse.allergens));
+
+        Set<String> importedTags = parseList(get(record, "tags"));
+        if (!importedTags.isEmpty()) {
+            drink.setTags(importedTags);
+        }
+        Set<String> importedMilk = parseList(get(record, "milk_types"));
+        if (!importedMilk.isEmpty()) {
+            drink.setMilkTypes(importedMilk);
+        }
+
         drink = drinkRepository.save(drink);
 
         DrinkSize size = drinkSizeRepository.findByDrinkAndSizeNameIgnoreCase(drink, sizeName).orElse(null);
@@ -288,6 +300,21 @@ public class CsvDrinkImportService {
                 cache.put(name, allergen);
             }
             result.allergens.add(allergen);
+        }
+        return result;
+    }
+
+    static Set<String> parseList(String raw) {
+        Set<String> result = new LinkedHashSet<>();
+        String cleaned = cleanString(raw);
+        if (cleaned == null || "none".equalsIgnoreCase(cleaned)) {
+            return result;
+        }
+        for (String part : cleaned.split(";")) {
+            String value = cleanString(part);
+            if (value != null) {
+                result.add(value);
+            }
         }
         return result;
     }

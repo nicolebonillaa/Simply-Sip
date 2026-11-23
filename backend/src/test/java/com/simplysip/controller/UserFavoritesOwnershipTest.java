@@ -3,6 +3,7 @@ package com.simplysip.controller;
 import com.simplysip.model.User;
 import com.simplysip.service.FavoriteService;
 import com.simplysip.service.UserService;
+import com.simplysip.service.ProfilePhotoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -14,7 +15,8 @@ import static org.mockito.Mockito.*;
 class UserFavoritesOwnershipTest {
     private final UserService users = mock(UserService.class);
     private final FavoriteService favorites = mock(FavoriteService.class);
-    private final UserController controller = new UserController(users, favorites);
+    private final ProfilePhotoService photos = mock(ProfilePhotoService.class);
+    private final UserController controller = new UserController(users, favorites, photos);
     private final UsernamePasswordAuthenticationToken auth =
             new UsernamePasswordAuthenticationToken("alice@example.com", "unused");
 

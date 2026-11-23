@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -70,6 +71,16 @@ public class Drink {
             inverseJoinColumns = @JoinColumn(name = "allergen_id")
     )
     private Set<Allergen> allergens = new HashSet<>();
+    
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "drink_tags", joinColumns = @JoinColumn(name = "drink_id"))
+    @Column(name = "tag", nullable = false)
+    private Set<String> tags = new LinkedHashSet<>();
+    
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "drink_milk_types", joinColumns = @JoinColumn(name = "drink_id"))
+    @Column(name = "milk_type", nullable = false)
+    private Set<String> milkTypes = new LinkedHashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
