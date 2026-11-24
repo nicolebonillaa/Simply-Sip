@@ -18,7 +18,8 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,9 +27,13 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,10 +43,6 @@ import java.util.Set;
 public class CsvDrinkImportService {
 
     private static final Logger log = LoggerFactory.getLogger(CsvDrinkImportService.class);
-    private static final String[] CSV_FILES = {
-            "data/it-s-boba-time_1_.csv",
-            "data/qwench-juice-bar_1_.csv"
-    };
 
     private final ImportProperties importProperties;
     private final LocationRepository locationRepository;
@@ -72,41 +73,29 @@ public class CsvDrinkImportService {
         Map<String, Allergen> allergenCache = new HashMap<>();
         Map<String, String> firstImageByDrinkKey = new HashMap<>();
 
-        for (String path : CSV_FILES) {
-            ClassPathResource resource = new ClassPathResource(path);
-            if (!resource.exists()) {
-                log.warn("CSV not found on classpath: {} — skip", path);
-                summary.skippedReasons.merge("missing file: " + path, 1, Integer::sum);
-                continue;
-            }
-            try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
-                 CSVParser parser = CSVFormat.DEFAULT.builder()
-                         .setHeader()
-                         .setSkipHeaderRecord(true)
-                         .setIgnoreEmptyLines(true)
-                         .setTrim(true)
-                         .build()
-                         .parse(reader)) {
-                Map<String, String> headerAliases = trimHeaderMap(parser.getHeaderMap());
-                for (CSVRecord record : parser) {
-                    summary.rowsRead++;
-                    try {
-                        importRow(record, headerAliases, locationsByCafe, allergenCache, firstImageByDrinkKey, summary);
-                    } catch (Exception ex) {
-                        summary.skipped++;
-                        String reason = "row " + record.getRecordNumber() + ": " + ex.getMessage();
-                        summary.skippedReasons.merge(reason, 1, Integer::sum);
-                        log.warn("Skipping CSV row: {}", reason);
-                    }
-                }
+        List<Resource> csvFiles = listCsvResources();
+        if (csvFiles.isEmpty()) {
+            log.warn("No CSV files found under classpath:{}/*.csv", importProperties.getFolder());
+            return summary;
+        }
+
+        for (Resource resource : csvFiles) {
+            FileReport fileReport = new FileReport(resourceFilename(resource));
+            try {
+                importFile(resource, locationsByCafe, allergenCache, firstImageByDrinkKey, summary, fileReport);
             } catch (Exception ex) {
-                log.error("Failed to read CSV {}", path, ex);
-                summary.skippedReasons.merge("failed reading " + path + ": " + ex.getMessage(), 1, Integer::sum);
+                fileReport.fileError = ex.getMessage();
+                summary.skippedReasons.merge(
+                        "failed file " + fileReport.filename + ": " + ex.getMessage(), 1, Integer::sum);
+                log.error("Skipping CSV file {}: {}", fileReport.filename, ex.getMessage());
             }
+            summary.fileReports.add(fileReport);
+            logFileReport(fileReport);
         }
 
         log.info(
-                "CSV import summary: rowsRead={}, drinksCreated={}, drinksUpdated={}, sizesCreated={}, sizesUpdated={}, locationsCreated={}, skipped={}, imagesSet={}, imagesUpdated={}, imagesMissing={}, invalidUrls={}",
+                "CSV import TOTAL: files={}, rowsRead={}, drinksCreated={}, drinksUpdated={}, sizesCreated={}, sizesUpdated={}, locationsCreated={}, skipped={}, imagesSet={}, imagesUpdated={}, imagesMissing={}, invalidUrls={}, qualityFlags={}",
+                summary.fileReports.size(),
                 summary.rowsRead,
                 summary.drinksCreated,
                 summary.drinksUpdated,
@@ -117,10 +106,51 @@ public class CsvDrinkImportService {
                 summary.imagesSet,
                 summary.imagesUpdated,
                 summary.imagesMissing,
-                summary.invalidUrls);
+                summary.invalidUrls,
+                summary.qualityFlags);
         summary.skippedReasons.forEach((reason, count) ->
                 log.info("  skipped reason ({}x): {}", count, reason));
         return summary;
+    }
+
+    private void importFile(
+            Resource resource,
+            Map<String, Location> locationsByCafe,
+            Map<String, Allergen> allergenCache,
+            Map<String, String> firstImageByDrinkKey,
+            ImportSummary summary,
+            FileReport fileReport) throws Exception {
+        try (Reader reader = new InputStreamReader(resource.getInputStream(), StandardCharsets.UTF_8);
+             CSVParser parser = CSVFormat.DEFAULT.builder()
+                     .setHeader()
+                     .setSkipHeaderRecord(true)
+                     .setIgnoreEmptyLines(true)
+                     .setTrim(true)
+                     .build()
+                     .parse(reader)) {
+            Map<String, String> headerAliases = trimHeaderMap(parser.getHeaderMap());
+            for (CSVRecord record : parser) {
+                summary.rowsRead++;
+                fileReport.rowsRead++;
+                try {
+                    importRow(
+                            record,
+                            headerAliases,
+                            locationsByCafe,
+                            allergenCache,
+                            firstImageByDrinkKey,
+                            summary,
+                            fileReport);
+                } catch (Exception ex) {
+                    summary.skipped++;
+                    fileReport.rowsSkipped++;
+                    String reason = "row " + record.getRecordNumber() + ": " + ex.getMessage();
+                    summary.skippedReasons.merge(reason, 1, Integer::sum);
+                    fileReport.skipReasons.merge(reason, 1, Integer::sum);
+                    log.warn("Skipping CSV row in {}: {}", fileReport.filename, reason);
+                }
+            }
+        }
     }
 
     private void importRow(
@@ -129,7 +159,8 @@ public class CsvDrinkImportService {
             Map<String, Location> locationsByCafe,
             Map<String, Allergen> allergenCache,
             Map<String, String> firstImageByDrinkKey,
-            ImportSummary summary) {
+            ImportSummary summary,
+            FileReport fileReport) {
         String cafeRaw = cleanString(get(record, headerAliases, "cafe"));
         String drinkRaw = cleanString(get(record, headerAliases, "drink"));
         if (drinkRaw == null) {
@@ -141,7 +172,8 @@ public class CsvDrinkImportService {
         }
         Location location = locationsByCafe.get(cafe.toLowerCase(Locale.ROOT));
         if (location == null) {
-            throw new IllegalArgumentException("no location entry for cafe '" + cafe + "'");
+            throw new IllegalArgumentException(
+                    "no location entry for cafe '" + cafe + "' (raw='" + cafeRaw + "') — add it to locations.json");
         }
 
         String drinkName = titleCaseIfAllLower(drinkRaw);
@@ -161,10 +193,26 @@ public class CsvDrinkImportService {
         Double proteinG = parseDouble(get(record, headerAliases, "protein_g"));
         Double caffeineMg = parseDouble(get(record, headerAliases, "caffeine_mg"));
 
+        flagImpossibleValues(
+                drinkName,
+                cafe,
+                calories,
+                totalFatG,
+                cholesterolMg,
+                sodiumMg,
+                carbsG,
+                sugarsG,
+                proteinG,
+                caffeineMg,
+                ounces,
+                price,
+                summary,
+                fileReport);
+
         String rawImage = firstNonBlank(
                 get(record, headerAliases, "image_url"),
                 get(record, headerAliases, "drink_image_url"));
-        String normalizedImage = resolveImageUrl(rawImage, summary);
+        String normalizedImage = resolveImageUrl(rawImage, summary, fileReport);
 
         boolean nutritionEmpty = calories == null && totalFatG == null && cholesterolMg == null
                 && sodiumMg == null && carbsG == null && sugarsG == null && proteinG == null && caffeineMg == null;
@@ -190,8 +238,10 @@ public class CsvDrinkImportService {
             drink.setLocation(location);
             drink.setName(drinkName);
             summary.drinksCreated++;
+            fileReport.drinksCreated++;
         } else {
             summary.drinksUpdated++;
+            fileReport.drinksUpdated++;
         }
 
         if (createdDrink) {
@@ -211,7 +261,14 @@ public class CsvDrinkImportService {
         }
 
         String drinkKey = location.getId() + "|" + drinkName.toLowerCase(Locale.ROOT);
-        applyDrinkImage(drink, drinkKey, normalizedImage, firstImageByDrinkKey, summary);
+        applyDrinkImage(drink, drinkKey, normalizedImage, firstImageByDrinkKey, summary, fileReport);
+
+        if (normalizedImage == null && isBlank(drink.getImageUrl())) {
+            fileReport.drinksMissingImage.add(drinkName);
+        }
+        if (nutritionEmpty) {
+            fileReport.drinksMissingNutrition.add(drinkName);
+        }
 
         drink.setAllergensKnown(allergenParse.known);
         drink.setAllergens(new HashSet<>(allergenParse.allergens));
@@ -223,8 +280,10 @@ public class CsvDrinkImportService {
             size.setDrink(drink);
             size.setSizeName(sizeName);
             summary.sizesCreated++;
+            fileReport.sizesCreated++;
         } else {
             summary.sizesUpdated++;
+            fileReport.sizesUpdated++;
         }
         size.setOunces(ounces);
         size.setPrice(price);
@@ -254,16 +313,56 @@ public class CsvDrinkImportService {
         }
     }
 
-    private String resolveImageUrl(String rawImage, ImportSummary summary) {
+    private void flagImpossibleValues(
+            String drinkName,
+            String cafe,
+            Integer calories,
+            Double totalFatG,
+            Double cholesterolMg,
+            Double sodiumMg,
+            Double carbsG,
+            Double sugarsG,
+            Double proteinG,
+            Double caffeineMg,
+            Double ounces,
+            BigDecimal price,
+            ImportSummary summary,
+            FileReport fileReport) {
+        List<String> flags = new ArrayList<>();
+        if (isNegative(calories) || isNegative(totalFatG) || isNegative(cholesterolMg) || isNegative(sodiumMg)
+                || isNegative(carbsG) || isNegative(sugarsG) || isNegative(proteinG) || isNegative(caffeineMg)
+                || isNegative(ounces) || (price != null && price.signum() < 0)) {
+            flags.add("negative nutrition/price/ounces");
+        }
+        if (calories != null && totalFatG != null && totalFatG * 9 > calories + 0.5) {
+            flags.add(String.format(Locale.US, "fat_g*9 (%.1f) > calories (%d)", totalFatG * 9, calories));
+        }
+        if (flags.isEmpty()) {
+            return;
+        }
+        String message = "Impossible values for '" + drinkName + "' at '" + cafe + "': " + String.join("; ", flags);
+        summary.qualityFlags++;
+        fileReport.qualityFlags.add(message);
+        log.warn(message);
+    }
+
+    private static boolean isNegative(Number value) {
+        return value != null && value.doubleValue() < 0;
+    }
+
+    private String resolveImageUrl(String rawImage, ImportSummary summary, FileReport fileReport) {
         String cleaned = cleanString(rawImage);
         if (cleaned == null) {
             summary.imagesMissing++;
+            fileReport.imagesMissing++;
             return null;
         }
         String normalized = ImageUrlNormalizer.normalize(cleaned);
         if (normalized == null) {
             summary.invalidUrls++;
             summary.imagesMissing++;
+            fileReport.invalidUrls++;
+            fileReport.imagesMissing++;
             return null;
         }
         return normalized;
@@ -274,7 +373,8 @@ public class CsvDrinkImportService {
             String drinkKey,
             String normalizedImage,
             Map<String, String> firstImageByDrinkKey,
-            ImportSummary summary) {
+            ImportSummary summary,
+            FileReport fileReport) {
         if (normalizedImage == null) {
             return;
         }
@@ -295,9 +395,11 @@ public class CsvDrinkImportService {
         if (isBlank(previous)) {
             drink.setImageUrl(normalizedImage);
             summary.imagesSet++;
+            fileReport.imagesSet++;
         } else if (!previous.equals(normalizedImage)) {
             drink.setImageUrl(normalizedImage);
             summary.imagesUpdated++;
+            fileReport.imagesUpdated++;
         } else {
             drink.setImageUrl(normalizedImage);
         }
@@ -306,7 +408,8 @@ public class CsvDrinkImportService {
     private Map<String, Location> loadLocations(ImportSummary summary) {
         Map<String, Location> byCafe = new LinkedHashMap<>();
         try {
-            ClassPathResource resource = new ClassPathResource("data/locations.json");
+            org.springframework.core.io.ClassPathResource resource =
+                    new org.springframework.core.io.ClassPathResource("data/locations.json");
             List<LocationSeed> seeds = objectMapper.readValue(
                     resource.getInputStream(), new TypeReference<List<LocationSeed>>() {});
             for (LocationSeed seed : seeds) {
@@ -325,10 +428,18 @@ public class CsvDrinkImportService {
                 location.setCity(seed.city);
                 location.setState(seed.state);
                 location.setZip(seed.zip);
-                location.setLatitude(seed.latitude);
-                location.setLongitude(seed.longitude);
-                // Location.imageUrl stays null for now (scraper images attach to drinks only).
-                location.setImageUrl(null);
+                if (seed.latitude != null) {
+                    location.setLatitude(seed.latitude);
+                }
+                if (seed.longitude != null) {
+                    location.setLongitude(seed.longitude);
+                }
+                location.setImageUrl(cleanString(seed.imageUrl));
+                if (location.getLatitude() == null || location.getLongitude() == null) {
+                    log.warn(
+                            "Location '{}' has null coordinates — will not appear in nearby results",
+                            cafe);
+                }
                 location = locationRepository.save(location);
                 byCafe.put(cafe.toLowerCase(Locale.ROOT), location);
             }
@@ -336,6 +447,59 @@ public class CsvDrinkImportService {
             throw new IllegalStateException("Failed to load data/locations.json: " + ex.getMessage(), ex);
         }
         return byCafe;
+    }
+
+    private List<Resource> listCsvResources() {
+        try {
+            String folder = importProperties.getFolder();
+            if (folder == null || folder.isBlank()) {
+                folder = "import/scraped";
+            }
+            folder = folder.replaceAll("^/+", "").replaceAll("/+$", "");
+            String pattern = "classpath*:" + folder + "/*.csv";
+            PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
+            Resource[] resources = resolver.getResources(pattern);
+            return Arrays.stream(resources)
+                    .filter(Resource::exists)
+                    .sorted(Comparator.comparing(CsvDrinkImportService::resourceFilename, String.CASE_INSENSITIVE_ORDER))
+                    .toList();
+        } catch (Exception ex) {
+            throw new IllegalStateException("Failed to list CSV import folder: " + ex.getMessage(), ex);
+        }
+    }
+
+    private static String resourceFilename(Resource resource) {
+        String name = resource.getFilename();
+        return name == null ? resource.toString() : name;
+    }
+
+    private static void logFileReport(FileReport report) {
+        log.info(
+                "CSV file report [{}]: rowsRead={}, drinksCreated={}, drinksUpdated={}, sizesCreated={}, sizesUpdated={}, rowsSkipped={}, imagesSet={}, imagesUpdated={}, imagesMissing={}, invalidUrls={}, missingImageDrinks={}, missingNutritionDrinks={}, qualityFlags={}, fileError={}",
+                report.filename,
+                report.rowsRead,
+                report.drinksCreated,
+                report.drinksUpdated,
+                report.sizesCreated,
+                report.sizesUpdated,
+                report.rowsSkipped,
+                report.imagesSet,
+                report.imagesUpdated,
+                report.imagesMissing,
+                report.invalidUrls,
+                report.drinksMissingImage.size(),
+                report.drinksMissingNutrition.size(),
+                report.qualityFlags.size(),
+                report.fileError);
+        report.skipReasons.forEach((reason, count) ->
+                log.info("  [{}] skip ({}x): {}", report.filename, count, reason));
+        report.qualityFlags.forEach(flag -> log.info("  [{}] quality: {}", report.filename, flag));
+        if (!report.drinksMissingImage.isEmpty()) {
+            log.info("  [{}] drinks with no image: {}", report.filename, report.drinksMissingImage);
+        }
+        if (!report.drinksMissingNutrition.isEmpty()) {
+            log.info("  [{}] drinks with no nutrition: {}", report.filename, report.drinksMissingNutrition);
+        }
     }
 
     private AllergenParse parseAllergens(String raw, Map<String, Allergen> cache) {
@@ -488,7 +652,32 @@ public class CsvDrinkImportService {
         public int imagesUpdated;
         public int imagesMissing;
         public int invalidUrls;
+        public int qualityFlags;
         public final Map<String, Integer> skippedReasons = new LinkedHashMap<>();
+        public final List<FileReport> fileReports = new ArrayList<>();
+    }
+
+    public static class FileReport {
+        public final String filename;
+        public int rowsRead;
+        public int drinksCreated;
+        public int drinksUpdated;
+        public int sizesCreated;
+        public int sizesUpdated;
+        public int rowsSkipped;
+        public int imagesSet;
+        public int imagesUpdated;
+        public int imagesMissing;
+        public int invalidUrls;
+        public String fileError;
+        public final Map<String, Integer> skipReasons = new LinkedHashMap<>();
+        public final Set<String> drinksMissingImage = new LinkedHashSet<>();
+        public final Set<String> drinksMissingNutrition = new LinkedHashSet<>();
+        public final List<String> qualityFlags = new ArrayList<>();
+
+        public FileReport(String filename) {
+            this.filename = filename;
+        }
     }
 
     private static class AllergenParse {

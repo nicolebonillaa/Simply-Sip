@@ -9,6 +9,8 @@ import java.util.Map;
 public class ImportProperties {
 
     private boolean enabled = false;
+    /** Classpath folder containing scraped CSV files (no leading slash). */
+    private String folder = "import/scraped";
     private Map<String, String> cafeNameMap = defaultCafeMap();
 
     public boolean isEnabled() {
@@ -17,6 +19,14 @@ public class ImportProperties {
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
+    }
+
+    public String getFolder() {
+        return folder;
+    }
+
+    public void setFolder(String folder) {
+        this.folder = folder;
     }
 
     public Map<String, String> getCafeNameMap() {

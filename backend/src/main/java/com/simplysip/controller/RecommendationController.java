@@ -1,6 +1,8 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.CafeRecommendationResponse;
 import com.simplysip.dto.DrinkFilterOptions;
+import com.simplysip.dto.HomeRecommendationResponse;
 import com.simplysip.dto.ScoredDrinkResponse;
 import com.simplysip.service.RecommendationService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,7 @@ public class RecommendationController {
         this.recommendationService = recommendationService;
     }
 
+    /** Legacy SCRUM endpoint — still supported. */
     @GetMapping
     public List<ScoredDrinkResponse> recommend(
             @RequestParam Long userId,
@@ -36,7 +39,6 @@ public class RecommendationController {
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lng,
             @RequestParam(required = false) Double maxDistance) {
-        // Only forward coordinates when distance filtering is requested (maxDistance present).
         Double filterLat = maxDistance == null ? null : lat;
         Double filterLng = maxDistance == null ? null : lng;
         DrinkFilterOptions filters = DrinkFilterOptions.builder()
@@ -53,5 +55,33 @@ public class RecommendationController {
                 .maxDistance(maxDistance)
                 .build();
         return recommendationService.recommend(userId, filters, filterLat, filterLng);
+    }
+
+    @GetMapping("/drinks")
+    public List<ScoredDrinkResponse> recommendDrinks(
+            @RequestParam Long userId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radiusMiles,
+            @RequestParam(required = false) Integer limit) {
+        return recommendationService.recommendDrinks(userId, lat, lng, radiusMiles, limit);
+    }
+
+    @GetMapping("/cafes")
+    public List<CafeRecommendationResponse> recommendCafes(
+            @RequestParam Long userId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng,
+            @RequestParam(required = false) Double radiusMiles,
+            @RequestParam(required = false) Integer limit) {
+        return recommendationService.recommendCafes(userId, lat, lng, radiusMiles, limit);
+    }
+
+    @GetMapping("/home")
+    public HomeRecommendationResponse recommendHome(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lng) {
+        return recommendationService.recommendHome(userId, lat, lng);
     }
 }

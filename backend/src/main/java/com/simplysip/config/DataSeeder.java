@@ -57,9 +57,15 @@ public class DataSeeder implements CommandLineRunner {
 
         ensureAllergen("Peanuts");
         ensureAllergen("Tree nuts");
-        ensureAllergen("Soy");
+        Allergen soyRestriction = ensureAllergen("Soy");
         ensureAllergen("Eggs");
         ensureAllergen("Wheat");
+
+        alice.getAllergenRestrictions().add(soyRestriction);
+        if (alice.getMaxCalories() == null) {
+            alice.setMaxCalories(500);
+        }
+        userRepository.save(alice);
 
         backfillDemoImageUrls();
 
