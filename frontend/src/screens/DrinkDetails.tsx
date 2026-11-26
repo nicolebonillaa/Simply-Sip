@@ -249,7 +249,8 @@ export default function DrinkDetails() {
                             uri={pressedDrink.imageUrl}
                             style={styles.imagePlaceholder}
                             label={`${pressedDrink.name} photo`}
-                        />
+                            iconSize={40}
+                            />
 
                         <View style={styles.titleRow}>
                             <Text style={styles.titleText}>
@@ -812,7 +813,9 @@ const makeStyles = (theme: Theme) =>
             aspectRatio: 1,
             borderRadius: 8,
             backgroundColor: theme.band,
-            marginBottom: 16
+            marginBottom: 16,
+            alignItems: "center",
+            justifyContent: "center",
         },
         titleRow: {
             flexDirection: "row",
