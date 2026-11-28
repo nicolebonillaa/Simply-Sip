@@ -28,6 +28,10 @@ public class User {
 
     private String name;
 
+    // Shown on ratings and reviews. Null for older accounts until the user picks one.
+    @Column(unique = true, length = 20)
+    private String username;
+
     @NotBlank
     @Email
     @Column(nullable = false, unique = true)
@@ -37,6 +41,15 @@ public class User {
     @Column(nullable = false)
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
+
+    // How the account was created: null or PASSWORD = email and password,
+    // GOOGLE = Google sign-in (the stored password is random and nobody knows it).
+    @Column(name = "auth_provider", length = 20)
+    private String authProvider;
+
+    // Google's stable id for this person (the "sub" in their ID token). Null if never linked.
+    @Column(name = "google_subject", unique = true)
+    private String googleSubject;
 
     @Column(name = "photo_url")
     private String photoUrl;

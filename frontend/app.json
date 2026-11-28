@@ -28,10 +28,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.simplysip"
+      "bundleIdentifier": "com.simplysip.app"
     },
     "android": {
-      "package": "com.anonymous.simplysip",
+      "package": "com.simplysip.app",
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/simply sip logo/simply-sip-icon-android.png"
