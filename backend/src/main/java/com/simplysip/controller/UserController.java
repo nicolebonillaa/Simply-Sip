@@ -1,7 +1,9 @@
 package com.simplysip.controller;
 
+import com.simplysip.dto.ChangePasswordRequest;
 import com.simplysip.dto.CreateUserRequest;
 import com.simplysip.dto.FavoriteResponse;
+import com.simplysip.dto.UpdateProfileRequest;
 import com.simplysip.dto.UserResponse;
 import com.simplysip.exception.NotFoundException;
 import com.simplysip.model.User;
@@ -90,16 +92,47 @@ public class UserController {
         return ResponseEntity.ok(favoriteService.findResponsesByUserId(id));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<User> update(
-            @PathVariable Long id,
-            @RequestBody User user,
+    /**
+     * Updates the signed-in user's name and username. Email and password in the
+     * body are ignored. A username taken by someone else is a 409.
+     */
+    @PutMapping("/me")
+    public UserResponse updateMe(
+            @Valid @RequestBody UpdateProfileRequest request,
             Authentication authentication) {
+        User user = currentUser(authentication);
+        return new UserResponse(userService.updateProfile(user, request.getName(), request.getUsername()));
+    }
+
+    /**
+     * Changes the signed-in user's password. A wrong current password is a 400.
+     */
+    @PostMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        userService.changePassword(currentUser(authentication), request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Deletes the signed-in user. Favorites, café favorites and preferences are
+     * removed with the user (cascade on the User entity); the avatar file is deleted from S3.
+     * Returns 204 on success.
+     */
+    @DeleteMapping("/me")
+    public ResponseEntity<Void> deleteMe(Authentication authentication) {
+        User user = currentUser(authentication);
+        if (user.getPhotoUrl() != null) {
+            profilePhotoService.removePhoto(user);
+        }
+        userService.delete(user.getId());
+        return ResponseEntity.noContent().build();
+    }
+
+    private User currentUser(Authentication authentication) {
         return userService.findByEmail(authentication.getName())
-                .filter(current -> current.getId().equals(id))
-                .flatMap(current -> userService.update(id, user))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.status(403).build());
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @PostMapping(value = "/me/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
